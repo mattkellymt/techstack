@@ -14,10 +14,15 @@ uv self update
 uv tool upgrade --all
 
 # git
-sudo dnf install -y git
-git config --global user.name "${USER}"
-git config --global user.email ""
-git config --global init.defaultBranch main
+if ! command -v git; then
+	GIT_USER="${USER}"
+	GIT_EMAIL=""
+	
+	sudo dnf install -y git
+	git config --global user.name "${GIT_USER}"
+	git config --global user.email "${GIT_EMAIL}"
+	git config --global init.defaultBranch main
+fi
 
 # brew
 sudo dnf group install -y development-tools
