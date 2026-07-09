@@ -12,6 +12,7 @@ fi
 
 uv self update
 uv tool upgrade --all
+uv lock --upgrade
 
 # git
 if ! command -v git; then
