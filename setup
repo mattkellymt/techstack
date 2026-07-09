@@ -6,16 +6,12 @@ sudo dnf install -y vim
 # uv
 sudo dnf install -y gawk
 
-if ! command -v uv; then
+if [ ! command -v uv ]; then
 	curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
 
-uv self update
-uv tool upgrade --all
-uv lock --upgrade
-
 # git
-if ! command -v git; then
+if [ ! command -v git ]; then
 	GIT_USER="${USER}"
 	GIT_EMAIL=""
 	
@@ -29,20 +25,17 @@ fi
 sudo dnf group install -y development-tools
 sudo dnf install -y bubblewrap
 
-if ! command -v brew; then
+if [ ! command -v brew ]; then
 	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 	echo >> "/home/${USER}/.bashrc"
 	echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"' >> "/home/${USER}/.bashrc"
 	eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"
 fi
 
-brew upgrade
-brew update
-
 # gh
 sudo dnf install -y dnf5-plugins
 
-if ! command -v gh; then
+if [ ! command -v gh ]; then
 	sudo dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo
 	sudo dnf install -y gh
 fi

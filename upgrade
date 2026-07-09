@@ -1,0 +1,17 @@
+#/bin/bash
+
+# dnf
+sudo dnf upgrade -y --refresh
+
+# brew
+brew update
+brew upgrade
+
+# uv
+uv self update
+uv tool upgrade --all
+
+if [ -f pyproject.toml ]; then
+	uv lock --upgrade
+fi
+
