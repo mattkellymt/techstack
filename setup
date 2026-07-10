@@ -32,5 +32,5 @@ fi
 # opencode
 if ! command -v opencode &> /dev/null; then
 	curl -fsSL https://opencode.ai/install | bash
-	source ~/.bashrc
+	ln ~/.opencode/bin/opencode ~/.local/bin/opencode
 fi
