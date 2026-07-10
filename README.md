@@ -12,10 +12,10 @@ curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/bootstra
 
 ## Setup
 ```bash
-source setup
+sh setup
 ```
 
 ## Upgrade
 ```bash
-source upgrade
+sh upgrade
 ```
