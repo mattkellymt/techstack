@@ -1,2 +1,4 @@
-## TODO
-Port to MacOS
+#!/bin/zsh
+set -euo pipefail
+
+# TODO: Port to macOS
