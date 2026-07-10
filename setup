@@ -27,7 +27,7 @@ sudo dnf install -y git
 mkdir -p ~/github.com
 
 if ! command -v git &> /dev/null; then
-	git_user="${USER}"
+	git_user=""
 	git_email=""
 	git config --global user.name "$git_user"
 	git config --global user.email "$git_email"
