@@ -1,5 +1,6 @@
 #/bin/bash
 
+# fedora 44
 sudo dnf upgrade -y
 sudo dnf install -y vim jq
 
