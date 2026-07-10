@@ -1,0 +1,16 @@
+#!/bin/bash
+
+curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/refs/heads/main/setup | sh
+
+if [ -z $(git config user.name) ]; then
+	git config --global user.name "$USER"
+	git config --global user.email ""
+	git config --global init.defaultBranch main
+fi
+
+if [ ! -d "~/github.com/mattkellymt/techstack" ]; then
+	mkdir -p ~/github.com/mattkellymt
+	cd ~/github.com/mattkellymt
+	git clone https://github.com/mattkellymt/techstack.git
+fi
+ 
