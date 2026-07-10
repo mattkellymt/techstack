@@ -46,6 +46,5 @@ fi
 
 # linking
 mkdir -p ~/.local/bin
-ln -sf ~/github.com/mattkellymt/techstack/setup ~/.local/bin/setup
-ln -sf ~/github.com/mattkellymt/techstack/upgrade ~/.local/bin/upgrade
+ln -sf ~/github.com/mattkellymt/techstack/techstack ~/.local/bin/techstack
 ln -sf ~/.opencode/bin/opencode ~/.local/bin/opencode
