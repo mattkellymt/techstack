@@ -15,3 +15,6 @@ if [ -f pyproject.toml ]; then
 	uv lock --upgrade
 fi
 
+# opencode
+opencode upgrade
+
