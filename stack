@@ -15,7 +15,7 @@ case "${1:-}" in
 Usage: stack <command>
 
 Commands:
-    setup       Install the software stack
+    setup       Install and configure the software stack
     upgrade     Upgrade all tools
 EOF
         ;;
