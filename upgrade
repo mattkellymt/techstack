@@ -12,7 +12,7 @@ uv self update
 uv tool upgrade --all
 
 if [ -f pyproject.toml ]; then
-	uv lock --upgrade
+	uv sync --upgrade
 fi
 
 # ollama
