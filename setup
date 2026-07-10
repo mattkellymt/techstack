@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 # fedora 44
 sudo dnf upgrade -y
