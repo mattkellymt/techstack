@@ -1,10 +1,13 @@
 #!/bin/bash
 
-curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/refs/heads/main/setup | sh
+sudo dnf upgrade -y 
+sudo dnf install -y git
 
-if [ ! -d ~/github.com/mattkellymt/techstack ]; then
-	mkdir -p ~/github.com/mattkellymt
-	cd ~/github.com/mattkellymt
+mkdir -p ~/github.com/mattkellymt
+cd ~/github.com/mattkellymt
+
+if [ ! -d techstack ]; then
 	git clone https://github.com/mattkellymt/techstack.git
 fi
- 
+
+source setup
