@@ -13,7 +13,7 @@ Fedora:
 curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/fedora/setup | sh
 ```
 
-macOS: (Placehodler)
+macOS: (Placeholder)
 ```bash
 # Script coming soon
 curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/macos/setup | sh
