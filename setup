@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # fedora 44
-sudo dnf upgrade -y --refresh
+sudo dnf upgrade -y
 sudo dnf group install -y development-tools
 sudo dnf install -y \
 	vim pass git jq yq bubblewrap gawk dnf5-plugins zstd
