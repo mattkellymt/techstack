@@ -7,7 +7,8 @@ sudo dnf upgrade -y
 uv self update
 uv tool upgrade --all
 
-if [ -f pyproject.toml ]; then
+if [ -f ~/github.com/mattkellymt/techstack/pyproject.toml ]; then
+	cd ~/github.com/mattkellymt/techstack
 	uv sync --upgrade
 fi
 
