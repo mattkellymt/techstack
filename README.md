@@ -1,4 +1,4 @@
-# setup the techstack by running
+## setup techstack by running
 ```bash
 source setup
 source upgrade
