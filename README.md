@@ -4,7 +4,7 @@ My personal AI/ML tech stack. A space for side projects, experiments, and sharpe
 ## Requirements
 - Fedora 44
 
-## Initial setup
+## Setup
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/setup | sh
 ```
