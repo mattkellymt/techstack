@@ -34,7 +34,6 @@ if ! command -v git &> /dev/null; then
 	git config --global init.defaultBranch main
 fi
 
-
 # gh
 sudo dnf install -y dnf5-plugins
 
