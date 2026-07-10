@@ -12,7 +12,7 @@ case "${1:-}" in
         ;;
     ""|-h|--help)
         cat <<EOF
-Usage: techstack <command>
+Usage: stack <command>
 
 Commands:
     setup       Bootstrap or re-sync the stack
@@ -20,7 +20,7 @@ Commands:
 EOF
         ;;
     *)
-        echo "techstack: unknown command '$1'" >&2
+        echo "stack: unknown command '$1'" >&2
         exit 1
         ;;
 esac
