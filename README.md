@@ -26,5 +26,12 @@ curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/ubuntu/s
 ```
 
 ## CLI
-Re-run setup ```stack setup```
-Upgrade all tools ```stack upgrade```
+Re-run setup:
+```bash
+stack setup
+```
+
+Upgrade all tools:
+```bash
+stack upgrade
+```
