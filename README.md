@@ -1,5 +1,5 @@
 ## About
-My personal AI/ML tech stack. A space for experiments, side projects, and sharpening my skills.
+My personal AI/ML tech stack. A space for side projects, experiments, and sharpening my skills.
 
 ## Requirements
 - Fedora 44
