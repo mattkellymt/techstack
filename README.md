@@ -12,10 +12,10 @@ curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/refs/heads/ma
 
 ## Setup
 ```bash
-sh setup
+source setup
 ```
 
 ## Upgrade
 ```bash
-sh upgrade
+source upgrade
 ```
