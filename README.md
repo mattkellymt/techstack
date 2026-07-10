@@ -9,5 +9,5 @@ My personal AI/ML tech stack. A space for side projects, experiments, and sharpe
 curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/setup | sh
 ```
 
-## Upgrade
+## Upgrading
 The ```upgrade``` command becomes available after running setup 
