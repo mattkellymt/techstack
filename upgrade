@@ -5,13 +5,11 @@ set -euo pipefail
 sudo dnf upgrade -y
 
 # uv
+cd ~/github.com/mattkellymt/techstack
+
 uv self update
 uv tool upgrade --all
-
-if [ -f ~/github.com/mattkellymt/techstack/pyproject.toml ]; then
-	cd ~/github.com/mattkellymt/techstack
-	uv sync --upgrade
-fi
+uv sync --upgrade
 
 # ollama
 url="https://api.github.com/repos/ollama/ollama/releases/latest"
