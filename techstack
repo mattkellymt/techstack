@@ -1,0 +1,29 @@
+#!/bin/bash
+set -euo pipefail
+
+#!/bin/bash
+set -euo pipefail
+
+TECHSTACK_DIR="$HOME/github.com/mattkellymt/techstack"
+
+case "${1:-}" in
+    setup|--setup)
+        exec "$TECHSTACK_DIR/setup"
+        ;;
+    upgrade|--upgrade)
+        exec "$TECHSTACK_DIR/upgrade"
+        ;;
+    ""|-h|--help)
+        cat <<EOF
+Usage: techstack <command>
+
+Commands:
+    setup       Bootstrap or re-sync the stack
+    upgrade     Upgrade everything in place
+EOF
+        ;;
+    *)
+        echo "techstack: unknown command '$1'" >&2
+        exit 1
+        ;;
+esac
