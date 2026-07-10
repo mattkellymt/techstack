@@ -1,9 +1,15 @@
-## about
-this project is an ai tech stack for fedora 44
+## About
+My personal AI/ML tech stack. A space for experiments, side projects, and sharpening my skills.
 
-## instructions
-setup and upgrade by running
+## Requirements
+- Fedora 44
+
+## Setup
 ```bash
 source setup
+```
+
+## Upgrade
+```bash
 source upgrade
 ```
