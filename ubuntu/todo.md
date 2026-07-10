@@ -1,2 +1,4 @@
-## TODO
-Port to Ubuntu
+#!/bin/bash
+set -euo pipefail
+
+# TODO: Port to Ubuntu
