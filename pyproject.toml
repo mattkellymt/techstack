@@ -1,6 +1,6 @@
 [project]
 name = "techstack"
-version = "26.7.9"
+version = "2026.7.10"
 description = ""
 readme = "README.md"
 requires-python = ">=3.14"
