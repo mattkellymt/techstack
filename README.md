@@ -26,7 +26,7 @@ curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/ubuntu/s
 ```
 
 ## CLI
-Re-run setup:
+Re-run the setup script:
 ```bash
 stack setup
 ```
