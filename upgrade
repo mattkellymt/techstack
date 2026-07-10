@@ -3,10 +3,6 @@
 # dnf
 sudo dnf upgrade -y --refresh
 
-# brew
-brew update
-brew upgrade
-
 # uv
 uv self update
 uv tool upgrade --all
