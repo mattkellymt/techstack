@@ -8,6 +8,7 @@ My personal AI/ML tech stack. A space for side projects, experiments, and sharpe
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/setup | sh
 ```
+Re-run with ```stack setup```
 
 ## Upgrading
-The ```upgrade``` command becomes available after running setup 
+```stack upgrade```
