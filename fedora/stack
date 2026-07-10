@@ -19,7 +19,7 @@ case "${1:-}" in
     upgrade)
         exec "$SCRIPT_DIR/upgrade"
         ;;
-    ""|-h|--help)
+    --help|-h|"")
         echo "$USAGE"
         ;;
     *)
