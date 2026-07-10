@@ -23,10 +23,9 @@ fi
 
 # git
 if ! command -v git &> /dev/null; then
+	sudo dnf install -y git
 	git_user="${USER}"
 	git_email=""
-	
-	sudo dnf install -y git
 	git config --global user.name "$git_user"
 	git config --global user.email "$git_email"
 	git config --global init.defaultBranch main
