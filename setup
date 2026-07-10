@@ -7,15 +7,22 @@ sudo dnf group install -y development-tools
 sudo dnf install -y \
 	vim pass git jq yq bubblewrap gawk dnf5-plugins zstd
 
+# clone
+mkdir -p ~/github.com/mattkellymt
+cd ~/github.com/mattkellymt
+
+if [ ! -d techstack ]; then
+	git clone https://github.com/mattkellymt/techstack.git
+fi
+
+cd techstack
+
 # uv
 if ! command -v uv &> /dev/null; then
 	curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
 
-if [ -f ~/github.com/mattkellymt/techstack/pyproject.toml ]; then
-	cd ~/github.com/mattkellymt/techstack
-	uv sync
-fi
+uv sync
 
 # gh
 if ! command -v gh &> /dev/null; then
