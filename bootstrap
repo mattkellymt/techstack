@@ -11,4 +11,4 @@ if [ ! -d techstack ]; then
 fi
 
 cd techstack
-source setup
+sh setup
