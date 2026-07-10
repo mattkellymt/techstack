@@ -15,6 +15,11 @@ if [ ! -d techstack ]; then
 	git clone https://github.com/mattkellymt/techstack.git
 fi
 
+cd techstack
+chmod +x setup
+chmod +x upgrade
+mkdir -p ~/.local/bin
+ln -sf ~/github.com/mattkellymt/techstack/setup ~/.local/bin/setup
 ln -sf ~/github.com/mattkellymt/techstack/upgrade ~/.local/bin/upgrade
 
 # uv
