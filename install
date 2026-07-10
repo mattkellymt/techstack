@@ -3,6 +3,17 @@
 sudo dnf upgrade -y
 sudo dnf install -y vim jq
 
+# brew
+sudo dnf group install -y development-tools
+sudo dnf install -y bubblewrap
+
+if ! command -v brew &> /dev/null; then
+	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+	echo >> "/home/${USER}/.bashrc"
+	echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"' >> "/home/${USER}/.bashrc"
+	eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"
+fi
+
 # uv
 sudo dnf install -y gawk
 
@@ -21,29 +32,12 @@ if ! command -v git &> /dev/null; then
 	git config --global init.defaultBranch main
 fi
 
-# brew
-sudo dnf group install -y development-tools
-sudo dnf install -y bubblewrap
-
-if ! command -v brew &> /dev/null; then
-	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-	echo >> "/home/${USER}/.bashrc"
-	echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"' >> "/home/${USER}/.bashrc"
-	eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"
-fi
-
 # gh
 sudo dnf install -y dnf5-plugins
 
 if ! command -v gh &> /dev/null; then
 	sudo dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo
 	sudo dnf install -y gh
-fi
-
-# opencode
-if ! command -v opencode &> /dev/null; then
-	curl -fsSL https://opencode.ai/install | bash
-	source ~/.bashrc
 fi
 
 # ollama
@@ -53,3 +47,8 @@ if ! command -v ollama &> /dev/null; then
         curl -fsSL https://ollama.com/install.sh | sh
 fi
 
+# opencode
+if ! command -v opencode &> /dev/null; then
+	curl -fsSL https://opencode.ai/install | bash
+	source ~/.bashrc
+fi
