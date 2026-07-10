@@ -2,12 +2,11 @@
 
 # fedora 44
 sudo dnf upgrade -y
-sudo dnf install -y vim pass git jq
+sudo dnf group install -y development-tools
+sudo dnf install -y \
+	vim pass git jq bubblewrap gawk dnf5-plugins zstd
 
 # brew
-sudo dnf group install -y development-tools
-sudo dnf install -y bubblewrap
-
 if ! command -v brew &> /dev/null; then
 	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 	echo >> "/home/${USER}/.bashrc"
@@ -16,8 +15,6 @@ if ! command -v brew &> /dev/null; then
 fi
 
 # uv
-sudo dnf install -y gawk
-
 if ! command -v uv &> /dev/null; then
 	curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
@@ -27,7 +24,6 @@ if [ -f pyproject.toml ]; then
 fi
 
 # gh
-sudo dnf install -y dnf5-plugins
 mkdir -p ~/github.com
 
 if ! command -v gh &> /dev/null; then
@@ -37,8 +33,6 @@ if ! command -v gh &> /dev/null; then
 fi
 
 # ollama
-sudo dnf install -y zstd
-
 if ! command -v ollama &> /dev/null; then
         curl -fsSL https://ollama.com/install.sh | sh
 fi
