@@ -6,29 +6,29 @@ My personal AI/ML tech stack. A space for side projects, experiments, and sharpe
 - [ ] macOS (Planned)
 - [ ] Ubuntu (Planned)
 
-## Setup and configure the software stack
+## Install and configure the software stack
 
 Fedora:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/fedora/setup | sh
+curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/fedora/install | sh
 ```
 
 macOS:
 ```bash
 # Script coming soon
-curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/macos/setup | sh
+curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/macos/install | sh
 ```
 
 Ubuntu:
 ```bash
 # Script coming soon
-curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/ubuntu/setup | sh
+curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/ubuntu/install | sh
 ```
 
 ## CLI
-Re-run the setup script:
+Re-run the install script:
 ```bash
-stack setup
+stack install
 ```
 
 Upgrade all tools:
