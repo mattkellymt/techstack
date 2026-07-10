@@ -13,13 +13,13 @@ Fedora:
 curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/fedora/setup | sh
 ```
 
-macOS: (Placeholder)
+macOS:
 ```bash
 # Script coming soon
 curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/macos/setup | sh
 ```
 
-Ubuntu: (Placeholder)
+Ubuntu:
 ```bash
 # Script coming soon
 curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/ubuntu/setup | sh
