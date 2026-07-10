@@ -4,15 +4,9 @@ My personal AI/ML tech stack. A space for side projects, experiments, and sharpe
 ## Requirements
 - Fedora 44
 
-## Bootstrap
-Clone and setup in one step 
-```bash
-curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/bootstrap | sh
-```
-
 ## Setup
 ```bash
-sh setup
+curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/setup | sh
 ```
 
 ## Upgrade
