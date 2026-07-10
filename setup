@@ -12,12 +12,12 @@ fi
 
 # git
 if ! command -v git &> /dev/null; then
-	GIT_USER="${USER}"
-	GIT_EMAIL=""
+	git_user="${USER}"
+	git_email=""
 	
 	sudo dnf install -y git
-	git config --global user.name "${GIT_USER}"
-	git config --global user.email "${GIT_EMAIL}"
+	git config --global user.name "$git_user"
+	git config --global user.email "$git_email"
 	git config --global init.defaultBranch main
 fi
 
