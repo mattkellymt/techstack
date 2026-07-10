@@ -15,7 +15,7 @@ if [ ! -d techstack ]; then
 	git clone https://github.com/mattkellymt/techstack.git
 fi
 
-cd techstack
+cd techstack/fedora
 chmod +x setup
 chmod +x upgrade
 chmod +x stack
@@ -47,5 +47,5 @@ fi
 
 # linking
 mkdir -p ~/.local/bin
-ln -sf ~/github.com/mattkellymt/techstack/stack ~/.local/bin/stack
+ln -sf ~/github.com/mattkellymt/techstack/fedora/stack ~/.local/bin/stack
 ln -sf ~/.opencode/bin/opencode ~/.local/bin/opencode

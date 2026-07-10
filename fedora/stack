@@ -1,14 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
-TECHSTACK_DIR="$HOME/github.com/mattkellymt/techstack"
+SCRIPT_DIR="$HOME/github.com/mattkellymt/techstack/fedora"
 
 case "${1:-}" in
     setup|--setup)
-        exec "$TECHSTACK_DIR/setup"
+        exec "$SCRIPT_DIR/setup"
         ;;
     upgrade|--upgrade)
-        exec "$TECHSTACK_DIR/upgrade"
+        exec "$SCRIPT_DIR/upgrade"
         ;;
     ""|-h|--help)
         cat <<EOF
