@@ -15,7 +15,7 @@ if [ ! -d techstack ]; then
 	git clone https://github.com/mattkellymt/techstack.git
 fi
 
-cd techstack/fedora
+cd ~/.github.com/mattkellymt/techstack/fedora
 chmod +x setup
 chmod +x upgrade
 chmod +x stack
