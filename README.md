@@ -8,15 +8,14 @@ My personal AI/ML tech stack. A space for side projects, experiments, and sharpe
 Run the bootstrap script to clone and setup in one step 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/refs/heads/main/bootstrap | sh
-source ~/.bashrc
 ```
 
 ## Setup
 ```bash
-source setup
+sh setup
 ```
 
 ## Upgrade
 ```bash
-source upgrade
+sh upgrade
 ```
