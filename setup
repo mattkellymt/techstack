@@ -2,7 +2,7 @@
 
 # fedora 44
 sudo dnf upgrade -y
-sudo dnf install -y vim git jq
+sudo dnf install -y vim pass git jq
 
 # brew
 sudo dnf group install -y development-tools
