@@ -16,6 +16,7 @@ if [ ! -d techstack ]; then
 fi
 
 cd techstack
+ln -sf upgrade ~/.local/bin/upgrade
 
 # uv
 if ! command -v uv &> /dev/null; then
