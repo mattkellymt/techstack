@@ -4,12 +4,10 @@ My personal AI/ML tech stack. A space for side projects, experiments, and sharpe
 ## Requirements
 - Fedora 44
 
-## Setup
+## Initial setup
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/setup | sh
 ```
 
-## Upgrade
-```bash
-sh upgrade
-```
+## Upgrading
+The ```upgrade``` becomes available after running setup 
