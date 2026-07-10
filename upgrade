@@ -15,9 +15,6 @@ if [ -f pyproject.toml ]; then
 	uv lock --upgrade
 fi
 
-# opencode
-opencode upgrade
-
 # ollama
 url="https://api.github.com/repos/ollama/ollama/releases/latest"
 latest=$(curl -fsSL "$url" | jq -r .tag_name | sed 's/v//')
@@ -27,3 +24,5 @@ if [ "$latest" != "$current" ]; then
     curl -fsSL https://ollama.com/install.sh | sh
 fi
 
+# opencode
+opencode upgrade
