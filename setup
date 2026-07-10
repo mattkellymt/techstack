@@ -23,6 +23,8 @@ if ! command -v uv &> /dev/null; then
 fi
 
 # git
+mkdir -p ~/github.com
+
 if ! command -v git &> /dev/null; then
 	sudo dnf install -y git
 	git_user="${USER}"
@@ -32,9 +34,9 @@ if ! command -v git &> /dev/null; then
 	git config --global init.defaultBranch main
 fi
 
+
 # gh
 sudo dnf install -y dnf5-plugins
-mkdir -p ~/github.com
 
 if ! command -v gh &> /dev/null; then
 	sudo dnf config-manager addrepo --from-repofile=https://cli.github.com/packages/rpm/gh-cli.repo
