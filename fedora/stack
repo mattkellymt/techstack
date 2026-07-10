@@ -4,10 +4,10 @@ set -euo pipefail
 SCRIPT_DIR="$HOME/github.com/mattkellymt/techstack/fedora"
 
 case "${1:-}" in
-    setup|--setup)
+    setup)
         exec "$SCRIPT_DIR/setup"
         ;;
-    upgrade|--upgrade)
+    upgrade)
         exec "$SCRIPT_DIR/upgrade"
         ;;
     ""|-h|--help)
