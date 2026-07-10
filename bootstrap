@@ -11,4 +11,6 @@ if [ ! -d techstack ]; then
 fi
 
 cd techstack
+pwd
+ls -al
 source setup
