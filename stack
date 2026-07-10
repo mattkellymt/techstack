@@ -15,8 +15,8 @@ case "${1:-}" in
 Usage: stack <command>
 
 Commands:
-    setup       Bootstrap or re-sync the stack
-    upgrade     Upgrade everything in place
+    setup       Install the software stack
+    upgrade     Upgrade all tools
 EOF
         ;;
     *)
