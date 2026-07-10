@@ -11,13 +11,12 @@ if ! command -v uv &> /dev/null; then
 	curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
 
-if [ -f pyproject.toml ]; then
+if [ -f ~/github.com/mattkellymt/techstack/pyproject.toml ]; then
+	cd ~/github.com/mattkellymt/techstack
 	uv sync
 fi
 
 # gh
-mkdir -p ~/github.com
-
 if ! command -v gh &> /dev/null; then
 	url="https://cli.github.com/packages/rpm/gh-cli.repo"
 	sudo dnf config-manager addrepo --from-repofile="$url"
