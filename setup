@@ -15,14 +15,14 @@ if [ ! -d techstack ]; then
 	git clone https://github.com/mattkellymt/techstack.git
 fi
 
-cd techstack
-ln -sf upgrade ~/.local/bin/upgrade
+ln -sf ~/github.com/mattkellymt/techstack/upgrade ~/.local/bin/upgrade
 
 # uv
 if ! command -v uv &> /dev/null; then
 	curl -LsSf https://astral.sh/uv/install.sh | sh
 fi
 
+cd ~/github.com/mattkellymt/techstack
 uv sync
 
 # gh
