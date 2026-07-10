@@ -1,7 +1,7 @@
 #/bin/bash
 
 sudo dnf upgrade -y
-sudo dnf install -y vim
+sudo dnf install -y vim jq
 
 # uv
 sudo dnf install -y gawk
@@ -44,5 +44,12 @@ fi
 if ! command -v opencode &> /dev/null; then
 	curl -fsSL https://opencode.ai/install | bash
 	source ~/.bashrc
+fi
+
+# ollama
+sudo dnf install -y zstd
+
+if ! command -v ollama &> /dev/null; then
+        curl -fsSL https://ollama.com/install.sh | sh
 fi
 
