@@ -7,7 +7,7 @@ sudo dnf group install -y development-tools
 sudo dnf install -y \
 	vim pass git jq yq bubblewrap gawk dnf5-plugins zstd
 
-# clone
+# cloning
 mkdir -p ~/github.com/mattkellymt
 cd ~/github.com/mattkellymt
 
@@ -18,9 +18,6 @@ fi
 cd techstack
 chmod +x setup
 chmod +x upgrade
-mkdir -p ~/.local/bin
-ln -sf ~/github.com/mattkellymt/techstack/setup ~/.local/bin/setup
-ln -sf ~/github.com/mattkellymt/techstack/upgrade ~/.local/bin/upgrade
 
 # uv
 if ! command -v uv &> /dev/null; then
@@ -44,6 +41,11 @@ fi
 
 # opencode
 if ! command -v opencode &> /dev/null; then
-	curl -fsSL https://opencode.ai/install | bash
-	ln -sf ~/.opencode/bin/opencode ~/.local/bin/opencode
+	curl -fsSL https://opencode.ai/install | sh
 fi
+
+# linking
+mkdir -p ~/.local/bin
+ln -sf ~/github.com/mattkellymt/techstack/setup ~/.local/bin/setup
+ln -sf ~/github.com/mattkellymt/techstack/upgrade ~/.local/bin/upgrade
+ln -sf ~/.opencode/bin/opencode ~/.local/bin/opencode
