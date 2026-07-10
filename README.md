@@ -10,4 +10,4 @@ curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/setup | 
 ```
 
 ## Upgrade
-The ```upgrade``` becomes available after running setup 
+The ```upgrade``` command becomes available after running setup 
