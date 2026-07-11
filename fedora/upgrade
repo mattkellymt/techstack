@@ -6,7 +6,7 @@ sudo dnf upgrade -y
 
 # repo
 cd ~/github.com/mattkellymt/techstack
-git fetch origin +main:main
+git fetch origin main
 current_branch=$(git branch --show-current)
 
 if [ "$current_branch" = "main" ]; then
