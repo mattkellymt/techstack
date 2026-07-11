@@ -4,9 +4,18 @@ set -euo pipefail
 # fedora 44
 sudo dnf upgrade -y
 
+# repo
+cd ~/github.com/mattkellymt/techstack
+git fetch origin +main:main
+current_branch=$(git branch --show-current)
+
+if [ "$current_branch" = "main" ]; then
+    git reset --hard origin/main
+    git clean -fd
+fi
+
 # uv
 cd ~/github.com/mattkellymt/techstack
-
 uv self update
 uv tool upgrade --all
 uv sync --upgrade
