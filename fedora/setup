@@ -7,7 +7,7 @@ sudo dnf group install -y development-tools
 sudo dnf install -y \
 	vim pass git jq yq bubblewrap gawk dnf5-plugins zstd
 
-# cloning
+# repo
 mkdir -p ~/github.com/mattkellymt
 cd ~/github.com/mattkellymt
 
