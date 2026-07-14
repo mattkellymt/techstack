@@ -16,7 +16,7 @@ fi
 
 # brew
 brew update
-brew upgrade
+brew upgrade -y
 
 # uv
 cd ~/github.com/mattkellymt/techstack
