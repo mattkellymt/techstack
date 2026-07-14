@@ -54,6 +54,8 @@ uv sync
 
 # opencode
 if ! command -v opencode &> /dev/null; then
+	brew tap anomalyco/tap
+	brew trust anomalyco/tap
 	brew install anomalyco/tap/opencode
 fi
 
