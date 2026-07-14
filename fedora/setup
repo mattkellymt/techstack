@@ -61,7 +61,7 @@ fi
 
 # gemini
 if ! command -v gemini &> /dev/null; then
-	brew install gemini-cli
+	brew install --cask antigravity-cli
 fi
 
 # grok
