@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail 
+set -eo pipefail 
 
 # fedora 44
 sudo dnf upgrade -y
