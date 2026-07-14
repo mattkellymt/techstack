@@ -24,9 +24,9 @@ if [ "$current_branch" = "main" ]; then
     git clean -fd
 fi
 
-chmod +x install.sh
-chmod +x upgrade.sh
-chmod +x stack.sh
+chmod +x setup
+chmod +x upgrade
+chmod +x stack
 
 # uv
 if ! command -v uv &> /dev/null; then
@@ -48,6 +48,16 @@ if ! command -v opencode &> /dev/null; then
 	curl -fsSL https://opencode.ai/install | sh
 fi
 
+# codex
+if ! command -v codex &> /dev/null; then
+	curl -fsSL https://chatgpt.com/codex/install.sh | sh
+fi
+
+# claude
+if ! command -v claude &> /dev/null; then
+	curl -fsSL https://claude.ai/install.sh | bash
+fi
+
 # ollama
 if ! command -v ollama &> /dev/null; then
 	curl -fsSL https://ollama.com/install.sh | sh
@@ -60,5 +70,5 @@ fi
 
 # linking
 mkdir -p ~/.local/bin
-ln -sf ~/github.com/mattkellymt/techstack/fedora/stack.sh ~/.local/bin/stack
+ln -sf ~/github.com/mattkellymt/techstack/fedora/stack ~/.local/bin/stack
 ln -sf ~/.opencode/bin/opencode ~/.local/bin/opencode

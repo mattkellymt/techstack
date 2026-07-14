@@ -23,6 +23,12 @@ uv sync --upgrade
 # opencode
 opencode upgrade
 
+# codex
+curl -fsSL https://chatgpt.com/codex/install.sh | sh
+
+# claude
+claude update
+
 # ollama
 curl -fsSL https://ollama.com/install.sh | sh
 
