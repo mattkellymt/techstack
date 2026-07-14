@@ -6,7 +6,7 @@ main() {
 	sudo dnf upgrade -y --refresh		
 	sudo dnf group install -y development-tools
 	sudo dnf install -y \
-		vim pass git dnf5-plugins jq yq bubblewrap gawk zstd cmake libcurl-devel
+		vim pass git dnf5-plugins bubblewrap gawk zstd cmake libcurl-devel
 	
 	# profile
 	mkdir -p ~/.local/bin
@@ -38,6 +38,8 @@ main() {
 		eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"
 		source ~/.bashrc
 	fi
+
+	brew install -y jq yq
 	
 	# uv
 	if ! command -v uv &> /dev/null; then
