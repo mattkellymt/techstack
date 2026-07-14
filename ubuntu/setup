@@ -1,5 +1,6 @@
 #!/bin/bash
 set -eo pipefail 
+
 main() {
 	# ubuntu 24.04
 	sudo apt update -y
@@ -94,4 +95,3 @@ main() {
 	fi 
 }
 main
-
