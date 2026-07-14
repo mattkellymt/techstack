@@ -81,7 +81,7 @@ fi
 
 # unsloth
 if ! command -v unsloth &> /dev/null; then
-	curl -fsSL https://unsloth.ai/install.sh | bash
+	curl -fsSL https://unsloth.ai/install.sh | UNSLOTH_SKIP_AUTOSTART=1 bash
 	source /home/${USER}/.bashrc
 fi 
 
