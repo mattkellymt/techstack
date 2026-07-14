@@ -4,6 +4,10 @@ set -euo pipefail
 # fedora 44
 sudo dnf upgrade -y
 
+# brew
+brew update
+brew upgrade
+
 # repo
 cd ~/github.com/mattkellymt/techstack
 git fetch origin main
@@ -24,10 +28,13 @@ uv sync --upgrade
 opencode upgrade
 
 # codex
-curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh
+brew upgrade --cask codex
 
 # claude
 claude update
+
+# gemini
+brew upgrade --cask gemini-cli
 
 # ollama
 curl -fsSL https://ollama.com/install.sh | sh
