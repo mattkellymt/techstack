@@ -13,6 +13,9 @@ sudo dnf group install -y development-tools
 sudo dnf install -y \
 	vim pass git gh jq yq bubblewrap gawk zstd cmake libcurl-devel
 
+# profile
+mkdir -p ~/.local/bin
+
 # github
 mkdir -p ~/github.com/mattkellymt
 cd ~/github.com/mattkellymt
@@ -30,6 +33,8 @@ if [ "$current_branch" = "main" ]; then
     git clean -fd
 fi
 
+ln -sf ~/github.com/mattkellymt/techstack/fedora/stack ~/.local/bin/stack
+
 # brew
 if ! command -v brew &> /dev/null; then
 	curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash
@@ -37,6 +42,7 @@ if ! command -v brew &> /dev/null; then
 	echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"' >> /home/${USER}/.bashrc
 	eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"
 	source /home/${USER}/.bashrc
+	ln -sf $(realpath "$(command -v brew)") ~/.local/bin/brew
 fi
 
 # uv
@@ -71,21 +77,19 @@ fi
 if ! command -v grok &> /dev/null; then
 	curl -fsSL https://x.ai/cli/install.sh | bash
 	source /home/${USER}/.bashrc
+	ln -sf $(realpath "$(command -v grok)") ~/.local/bin/grok
 fi
 
 # ollama
 if ! command -v ollama &> /dev/null; then
 	curl -fsSL https://ollama.com/install.sh | bash
 	source /home/${USER}/.bashrc
+	ln -sf $(realpath "$(command -v ollama)") ~/.local/bin/ollama
 fi 
 
 # unsloth
 if ! command -v unsloth &> /dev/null; then
 	curl -fsSL https://unsloth.ai/install.sh | UNSLOTH_SKIP_AUTOSTART=1 bash
 	source /home/${USER}/.bashrc
+	ln -sf $(realpath "$(command -v unsloth)") ~/.local/bin/unsloth
 fi 
-
-# linking
-mkdir -p ~/.local/bin
-ln -sf ~/github.com/mattkellymt/techstack/fedora/stack ~/.local/bin/stack
-ln -sf ~/.opencode/bin/opencode ~/.local/bin/opencode
