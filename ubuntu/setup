@@ -8,11 +8,8 @@ main() {
 	
 	sudo apt install -y build-essential
 	sudo apt install -y \
-		vim pass git jq bubblewrap gawk zstd cmake libcurl4-openssl-dev
-	
-	# profile
-	mkdir -p ~/.local/bin
-	
+		vim pass git bubblewrap gawk zstd cmake libcurl4-openssl-dev
+		
 	# github
 	mkdir -p ~/github.com/mattkellymt
 	cd ~/github.com/mattkellymt
@@ -29,7 +26,8 @@ main() {
 	    git reset --hard origin/main
 	    git clean -fd
 	fi
-	
+
+	mkdir -p ~/.local/bin
 	ln -sf ~/github.com/mattkellymt/techstack/ubuntu/stack ~/.local/bin/stack
 	
 	# brew
@@ -41,10 +39,7 @@ main() {
 		source ~/.bashrc
 	fi
 	
-	# yq
-	if ! command -v yq &> /dev/null; then
-		brew install -y yq
-	fi
+	brew install -y jq yq
 	
 	# uv
 	if ! command -v uv &> /dev/null; then
