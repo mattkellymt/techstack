@@ -1,4 +1,4 @@
 #!/bin/zsh
-set -euo pipefail
+set -eo pipefail
 
 # TODO: Port to macOS
