@@ -51,12 +51,12 @@ fi
 
 # codex
 if ! command -v codex &> /dev/null; then
-	brew install codex
+	brew install --cask codex
 fi
 
 # claude
 if ! command -v claude &> /dev/null; then
-	brew install claude-code
+	brew install --cask claude-code
 fi
 
 # gemini
