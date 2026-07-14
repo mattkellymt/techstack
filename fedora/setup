@@ -46,7 +46,7 @@ fi
 
 # uv
 if ! command -v uv &> /dev/null; then
-	brew install -y uv
+	brew install uv
 fi
 
 cd ~/github.com/mattkellymt/techstack
