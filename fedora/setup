@@ -3,9 +3,13 @@ set -euo pipefail
 
 # fedora 44
 sudo dnf upgrade -y
+sudo dnf install -y dnf5-plugins
+
+sudo dnf config-manager addrepo --from-repofile="https://cli.github.com/packages/rpm/gh-cli.repo"
+
 sudo dnf group install -y development-tools
 sudo dnf install -y \
-	vim pass git jq yq bubblewrap gawk dnf5-plugins zstd cmake libcurl-devel
+	vim pass git gh jq yq bubblewrap gawk zstd cmake libcurl-devel
 
 # repo
 mkdir -p ~/github.com/mattkellymt
@@ -24,10 +28,6 @@ if [ "$current_branch" = "main" ]; then
     git clean -fd
 fi
 
-chmod +x setup
-chmod +x upgrade
-chmod +x stack
-
 # brew
 if ! command -v brew &> /dev/null; then
 	curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | sh
@@ -41,16 +41,9 @@ fi
 cd ~/github.com/mattkellymt/techstack
 uv sync
 
-# gh
-if ! command -v gh &> /dev/null; then
-	url="https://cli.github.com/packages/rpm/gh-cli.repo"
-	sudo dnf config-manager addrepo --from-repofile="$url"
-	sudo dnf install -y gh
-fi
-
 # opencode
 if ! command -v opencode &> /dev/null; then
-	curl -fsSL https://opencode.ai/install | sh
+	brew install anomalyco/tap/opencode
 fi
 
 # codex
@@ -60,7 +53,7 @@ fi
 
 # claude
 if ! command -v claude &> /dev/null; then
-	curl -fsSL https://claude.ai/install.sh | sh
+	brew install --cask claude-code
 fi
 
 # gemini
