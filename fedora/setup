@@ -87,5 +87,4 @@ main() {
 		source ~/.bashrc
 	fi 
 }
-
 main
