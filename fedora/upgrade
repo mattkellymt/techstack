@@ -30,5 +30,4 @@ main() {
     # unsloth
     curl -fsSL https://unsloth.ai/install.sh | UNSLOTH_SKIP_AUTOSTART=1 bash
 }
-
 main
