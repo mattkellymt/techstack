@@ -46,7 +46,7 @@ fi
 
 # uv
 if ! command -v uv &> /dev/null; then
-	brew install uv
+	brew install -y uv
 fi
 
 cd ~/github.com/mattkellymt/techstack
@@ -56,22 +56,22 @@ uv sync
 if ! command -v opencode &> /dev/null; then
 	brew tap anomalyco/tap
 	brew trust anomalyco/tap
-	brew install anomalyco/tap/opencode
+	brew install -y anomalyco/tap/opencode
 fi
 
 # codex
 if ! command -v codex &> /dev/null; then
-	brew install --cask codex
+	brew install -y --cask codex
 fi
 
 # claude
 if ! command -v claude &> /dev/null; then
-	brew install --cask claude-code
+	brew install -y --cask claude-code
 fi
 
 # gemini
 if ! command -v gemini &> /dev/null; then
-	brew install --cask antigravity-cli
+	brew install -y --cask antigravity-cli
 fi
 
 # grok
