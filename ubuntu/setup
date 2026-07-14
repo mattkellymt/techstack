@@ -40,7 +40,7 @@ main() {
 		source ~/.bashrc
 	fi
 	
-	brew install -y jq yq
+	brew install -y jq yq hf
 	
 	# uv
 	if ! command -v uv &> /dev/null; then
