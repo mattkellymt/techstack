@@ -7,7 +7,7 @@ main() {
 	sudo dnf group install -y development-tools
 	sudo dnf install -y \
 		vim neovim python3-neovim git \
-		dnf5-plugins bubblewrap gawk zstd cmake libcurl-devel
+		dnf5-plugins bubblewrap gawk zstd cmake
 	
 	# brew
 	if ! command -v brew &> /dev/null; then
@@ -18,7 +18,7 @@ main() {
 		source ~/.bashrc
 	fi
 
-	brew install -y jq yq hf htop pass
+	brew install -y jq yq hf htop pass curl
 
 	# github
 	mkdir -p ~/github.com/mattkellymt
