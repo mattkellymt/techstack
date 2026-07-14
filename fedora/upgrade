@@ -27,4 +27,4 @@ uv sync --upgrade
 curl -fsSL https://ollama.com/install.sh | sh
 
 # unsloth
-curl -fsSL https://unsloth.ai/install.sh | sh
+curl -fsSL https://unsloth.ai/install.sh | UNSLOTH_SKIP_AUTOSTART=1 bash
