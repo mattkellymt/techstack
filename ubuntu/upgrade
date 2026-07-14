@@ -6,6 +6,10 @@ main() {
     sudo apt update -y
     sudo apt upgrade -y
     
+    # brew
+    brew update
+    brew upgrade -y
+
     # github
     cd ~/github.com/mattkellymt/techstack
     git fetch origin main
@@ -15,11 +19,7 @@ main() {
         git reset --hard origin/main
         git clean -fd
     fi
-    
-    # brew
-    brew update
-    brew upgrade -y
-    
+
     # uv
     cd ~/github.com/mattkellymt/techstack
     uv tool upgrade --all
