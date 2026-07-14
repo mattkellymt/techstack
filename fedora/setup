@@ -5,7 +5,9 @@ set -euo pipefail
 sudo dnf upgrade -y
 sudo dnf install -y dnf5-plugins
 
-sudo dnf config-manager addrepo --overwrite --from-repofile="https://cli.github.com/packages/rpm/gh-cli.repo"
+if ! dnf repolist --repo gh-cli &> /dev/null; then
+	sudo dnf config-manager addrepo --from-repofile="https://cli.github.com/packages/rpm/gh-cli.repo"
+fi
 
 sudo dnf group install -y development-tools
 sudo dnf install -y \
@@ -38,7 +40,7 @@ fi
 
 # uv
 if ! command -v uv &> /dev/null; then
-	curl -LsSf https://astral.sh/uv/install.sh | bash
+	brew install uv
 fi
 
 cd ~/github.com/mattkellymt/techstack
