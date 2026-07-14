@@ -4,11 +4,11 @@ My personal AI/ML tech stack. A space for side projects, experiments, and sharpe
 ## OS Support
 - [x] Fedora
 - [ ] macOS (Planned)
-- [ ] Ubuntu (Planned)
+- [x] Ubuntu
 
 ## Install and configure the software stack
 
-Fedora:
+Fedora 44:
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/fedora/setup | bash
 ```
@@ -19,9 +19,8 @@ macOS:
 curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/macos/setup | zsh
 ```
 
-Ubuntu:
+Ubuntu 26:
 ```bash
-# Script coming soon
 curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/ubuntu/setup | bash
 ```
 
