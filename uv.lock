@@ -1983,7 +1983,7 @@ wheels = [
 
 [[package]]
 name = "techstack"
-version = "2026.7.10"
+version = "2026.7.14"
 source = { virtual = "." }
 dependencies = [
     { name = "gguf" },
