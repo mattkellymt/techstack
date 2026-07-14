@@ -2,9 +2,13 @@
 set -eo pipefail 
 
 main() {
-    # fedora 44
+    # dnf
     sudo dnf upgrade -y --refresh
     
+    # brew
+    brew update
+    brew upgrade -y
+
     # github
     cd ~/github.com/mattkellymt/techstack
     git fetch origin main
@@ -14,10 +18,6 @@ main() {
         git reset --hard origin/main
         git clean -fd
     fi
-    
-    # brew
-    brew update
-    brew upgrade -y
     
     # uv
     cd ~/github.com/mattkellymt/techstack
