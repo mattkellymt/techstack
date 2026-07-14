@@ -10,19 +10,19 @@ My personal AI/ML tech stack. A space for side projects, experiments, and sharpe
 
 Fedora:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/fedora/setup | sh
+curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/fedora/setup | bash
 ```
 
 macOS:
 ```bash
 # Script coming soon
-curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/macos/setup | sh
+curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/macos/setup | zsh
 ```
 
 Ubuntu:
 ```bash
 # Script coming soon
-curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/ubuntu/setup | sh
+curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/ubuntu/setup | bash
 ```
 
 ## CLI
