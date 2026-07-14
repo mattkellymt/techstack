@@ -70,16 +70,19 @@ fi
 # grok
 if ! command -v grok &> /dev/null; then
 	curl -fsSL https://x.ai/cli/install.sh | bash
+	source /home/${USER}/.bashrc
 fi
 
 # ollama
 if ! command -v ollama &> /dev/null; then
 	curl -fsSL https://ollama.com/install.sh | bash
+	source /home/${USER}/.bashrc
 fi 
 
 # unsloth
 if ! command -v unsloth &> /dev/null; then
 	curl -fsSL https://unsloth.ai/install.sh | bash
+	source /home/${USER}/.bashrc
 fi 
 
 # linking
