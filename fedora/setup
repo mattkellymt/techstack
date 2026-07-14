@@ -80,3 +80,4 @@ fi
 mkdir -p ~/.local/bin
 ln -sf ~/github.com/mattkellymt/techstack/fedora/stack ~/.local/bin/stack
 ln -sf ~/.opencode/bin/opencode ~/.local/bin/opencode
+ln -sf /home/linuxbrew/.linuxbrew/Homebrew/bin/brew ~/.local/bin/brew
