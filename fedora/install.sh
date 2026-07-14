@@ -5,7 +5,7 @@ set -euo pipefail
 sudo dnf upgrade -y
 sudo dnf group install -y development-tools
 sudo dnf install -y \
-	vim pass git jq yq bubblewrap gawk dnf5-plugins zstd
+	vim pass git jq yq bubblewrap gawk dnf5-plugins zstd cmake libcurl-devel
 
 # repo
 mkdir -p ~/github.com/mattkellymt
@@ -15,6 +15,7 @@ if [ ! -d techstack ]; then
 	git clone https://github.com/mattkellymt/techstack.git
 fi
 
+cd ~/github.com/mattkellymt/techstack/fedora
 git fetch origin main
 current_branch=$(git branch --show-current)
 
@@ -23,7 +24,6 @@ if [ "$current_branch" = "main" ]; then
     git clean -fd
 fi
 
-cd ~/github.com/mattkellymt/techstack/fedora
 chmod +x install.sh
 chmod +x upgrade.sh
 chmod +x stack.sh
