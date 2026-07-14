@@ -42,7 +42,6 @@ if ! command -v brew &> /dev/null; then
 	echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"' >> /home/${USER}/.bashrc
 	eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"
 	source /home/${USER}/.bashrc
-	ln -sf $(realpath "$(command -v brew)") ~/.local/bin/brew
 fi
 
 # uv
@@ -77,19 +76,16 @@ fi
 if ! command -v grok &> /dev/null; then
 	curl -fsSL https://x.ai/cli/install.sh | bash
 	source /home/${USER}/.bashrc
-	ln -sf $(realpath "$(command -v grok)") ~/.local/bin/grok
 fi
 
 # ollama
 if ! command -v ollama &> /dev/null; then
 	curl -fsSL https://ollama.com/install.sh | bash
 	source /home/${USER}/.bashrc
-	ln -sf $(realpath "$(command -v ollama)") ~/.local/bin/ollama
 fi 
 
 # unsloth
 if ! command -v unsloth &> /dev/null; then
 	curl -fsSL https://unsloth.ai/install.sh | UNSLOTH_SKIP_AUTOSTART=1 bash
 	source /home/${USER}/.bashrc
-	ln -sf $(realpath "$(command -v unsloth)") ~/.local/bin/unsloth
 fi 
