@@ -28,6 +28,11 @@ chmod +x setup
 chmod +x upgrade
 chmod +x stack
 
+# brew
+if ! command -v brew &> /dev/null; then
+	curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | sh
+fi
+
 # uv
 if ! command -v uv &> /dev/null; then
 	curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -50,12 +55,22 @@ fi
 
 # codex
 if ! command -v codex &> /dev/null; then
-	curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh
+	brew install --cask codex
 fi
 
 # claude
 if ! command -v claude &> /dev/null; then
-	curl -fsSL https://claude.ai/install.sh | bash
+	curl -fsSL https://claude.ai/install.sh | sh
+fi
+
+# gemini
+if ! command -v gemini &> /dev/null; then
+	brew install gemini-cli
+fi
+
+# grok
+if ! command -v grok &> /dev/null; then
+	curl -fsSL https://x.ai/cli/install.sh | sh
 fi
 
 # ollama
@@ -71,4 +86,5 @@ fi
 # linking
 mkdir -p ~/.local/bin
 ln -sf ~/github.com/mattkellymt/techstack/fedora/stack ~/.local/bin/stack
+ln -sf /home/linuxbrew/.linuxbrew/bin/brew ~/.local/bin/brew
 ln -sf ~/.opencode/bin/opencode ~/.local/bin/opencode
