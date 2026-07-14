@@ -54,22 +54,22 @@ uv sync
 
 # opencode
 if ! command -v opencode &> /dev/null; then
-	brew install -y anomalyco/tap/opencode
+	brew install anomalyco/tap/opencode
 fi
 
 # codex
 if ! command -v codex &> /dev/null; then
-	brew install -y --cask codex
+	brew install --cask codex
 fi
 
 # claude
 if ! command -v claude &> /dev/null; then
-	brew install -y --cask claude-code
+	brew install --cask claude-code
 fi
 
 # gemini
 if ! command -v gemini &> /dev/null; then
-	brew install -y --cask antigravity-cli
+	brew install --cask antigravity-cli
 fi
 
 # grok
