@@ -6,7 +6,8 @@ main() {
 	sudo dnf upgrade -y --refresh		
 	sudo dnf group install -y development-tools
 	sudo dnf install -y \
-		vim pass git dnf5-plugins bubblewrap gawk zstd cmake libcurl-devel
+		vim neovim python3-neovim pass git \
+		dnf5-plugins bubblewrap gawk zstd cmake libcurl-devel
 		
 	# github
 	mkdir -p ~/github.com/mattkellymt
