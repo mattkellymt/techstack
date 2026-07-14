@@ -36,6 +36,7 @@ if ! command -v brew &> /dev/null; then
 	echo >> /home/${USER}/.bashrc
 	echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"' >> /home/${USER}/.bashrc
 	eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"
+	source /home/${USER}/.bashrc
 fi
 
 # uv
