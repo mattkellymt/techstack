@@ -11,7 +11,7 @@ sudo dnf group install -y development-tools
 sudo dnf install -y \
 	vim pass git gh jq yq bubblewrap gawk zstd cmake libcurl-devel
 
-# repo
+# github
 mkdir -p ~/github.com/mattkellymt
 cd ~/github.com/mattkellymt
 
@@ -30,12 +30,12 @@ fi
 
 # brew
 if ! command -v brew &> /dev/null; then
-	curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | sh
+	curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash
 fi
 
 # uv
 if ! command -v uv &> /dev/null; then
-	curl -LsSf https://astral.sh/uv/install.sh | sh
+	curl -LsSf https://astral.sh/uv/install.sh | bash
 fi
 
 cd ~/github.com/mattkellymt/techstack
@@ -48,12 +48,12 @@ fi
 
 # codex
 if ! command -v codex &> /dev/null; then
-	brew install --cask codex
+	brew install codex
 fi
 
 # claude
 if ! command -v claude &> /dev/null; then
-	brew install --cask claude-code
+	brew install claude-code
 fi
 
 # gemini
@@ -63,21 +63,20 @@ fi
 
 # grok
 if ! command -v grok &> /dev/null; then
-	curl -fsSL https://x.ai/cli/install.sh | sh
+	curl -fsSL https://x.ai/cli/install.sh | bash
 fi
 
 # ollama
 if ! command -v ollama &> /dev/null; then
-	curl -fsSL https://ollama.com/install.sh | sh
+	curl -fsSL https://ollama.com/install.sh | bash
 fi 
 
 # unsloth
 if ! command -v unsloth &> /dev/null; then
-	curl -fsSL https://unsloth.ai/install.sh | sh
+	curl -fsSL https://unsloth.ai/install.sh | bash
 fi 
 
 # linking
 mkdir -p ~/.local/bin
 ln -sf ~/github.com/mattkellymt/techstack/fedora/stack ~/.local/bin/stack
-ln -sf /home/linuxbrew/.linuxbrew/bin/brew ~/.local/bin/brew
 ln -sf ~/.opencode/bin/opencode ~/.local/bin/opencode
