@@ -2,7 +2,7 @@
 set -eo pipefail 
 
 # fedora 44
-sudo dnf upgrade -y
+sudo dnf upgrade -y --refresh
 
 # github
 cd ~/github.com/mattkellymt/techstack
