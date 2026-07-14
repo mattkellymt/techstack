@@ -34,7 +34,7 @@ brew upgrade codex
 brew upgrade claude-code
 
 # gemini
-brew upgrade gemini-cli
+brew upgrade antigravity-cli
 
 # ollama
 curl -fsSL https://ollama.com/install.sh | sh
