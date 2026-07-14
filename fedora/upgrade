@@ -20,21 +20,8 @@ brew upgrade
 
 # uv
 cd ~/github.com/mattkellymt/techstack
-uv self update
 uv tool upgrade --all
 uv sync --upgrade
-
-# opencode
-brew upgrade anomalyco/tap/opencode
-
-# codex
-brew upgrade codex
-
-# claude
-brew upgrade claude-code
-
-# gemini
-brew upgrade antigravity-cli
 
 # ollama
 curl -fsSL https://ollama.com/install.sh | sh
