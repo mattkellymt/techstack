@@ -15,10 +15,18 @@ if [ ! -d techstack ]; then
 	git clone https://github.com/mattkellymt/techstack.git
 fi
 
+git fetch origin main
+current_branch=$(git branch --show-current)
+
+if [ "$current_branch" = "main" ]; then
+    git reset --hard origin/main
+    git clean -fd
+fi
+
 cd ~/github.com/mattkellymt/techstack/fedora
-chmod +x setup
-chmod +x upgrade
-chmod +x stack
+chmod +x install.sh
+chmod +x upgrade.sh
+chmod +x stack.sh
 
 # uv
 if ! command -v uv &> /dev/null; then
@@ -35,17 +43,22 @@ if ! command -v gh &> /dev/null; then
 	sudo dnf install -y gh
 fi
 
-# ollama
-if ! command -v ollama &> /dev/null; then
-	curl -fsSL https://ollama.com/install.sh | sh
-fi
-
 # opencode
 if ! command -v opencode &> /dev/null; then
 	curl -fsSL https://opencode.ai/install | sh
 fi
 
+# ollama
+if ! command -v ollama &> /dev/null; then
+	curl -fsSL https://ollama.com/install.sh | sh
+fi 
+
+# unsloth
+if ! command -v unsloth &> /dev/null; then
+	curl -fsSL https://unsloth.ai/install.sh | sh
+fi 
+
 # linking
 mkdir -p ~/.local/bin
-ln -sf ~/github.com/mattkellymt/techstack/fedora/stack ~/.local/bin/stack
+ln -sf ~/github.com/mattkellymt/techstack/fedora/stack.sh ~/.local/bin/stack
 ln -sf ~/.opencode/bin/opencode ~/.local/bin/opencode

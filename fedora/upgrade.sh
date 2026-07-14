@@ -20,14 +20,11 @@ uv self update
 uv tool upgrade --all
 uv sync --upgrade
 
-# ollama
-url="https://api.github.com/repos/ollama/ollama/releases/latest"
-latest=$(curl -fsSL "$url" | jq -r .tag_name | sed 's/v//')
-current=$(ollama --version | sed 's/ollama version is //')
-
-if [ "$latest" != "$current" ]; then
-	curl -fsSL https://ollama.com/install.sh | sh
-fi
-
 # opencode
 opencode upgrade
+
+# ollama
+curl -fsSL https://ollama.com/install.sh | sh
+
+# unsloth
+curl -fsSL https://unsloth.ai/install.sh | sh

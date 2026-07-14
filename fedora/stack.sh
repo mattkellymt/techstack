@@ -7,17 +7,17 @@ USAGE=$(cat <<EOF
 Usage: stack <command>
 
 Commands:
-  setup    Install and configure the software stack
+  install  Install and configure the software stack
   upgrade  Upgrade all tools
 EOF
 )
 
 case "${1:-}" in
-    setup)
-        exec "$SCRIPT_DIR/setup"
+    install)
+        exec "$SCRIPT_DIR/install.sh"
         ;;
     upgrade)
-        exec "$SCRIPT_DIR/upgrade"
+        exec "$SCRIPT_DIR/upgrade.sh"
         ;;
     --help|-h|"")
         echo "$USAGE"
