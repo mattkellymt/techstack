@@ -7,10 +7,7 @@ main() {
 	sudo dnf group install -y development-tools
 	sudo dnf install -y \
 		vim pass git dnf5-plugins bubblewrap gawk zstd cmake libcurl-devel
-	
-	# profile
-	mkdir -p ~/.local/bin
-	
+		
 	# github
 	mkdir -p ~/github.com/mattkellymt
 	cd ~/github.com/mattkellymt
@@ -27,7 +24,8 @@ main() {
 	    git reset --hard origin/main
 	    git clean -fd
 	fi
-	
+
+	mkdir -p ~/.local/bin
 	ln -sf ~/github.com/mattkellymt/techstack/fedora/stack ~/.local/bin/stack
 	
 	# brew
