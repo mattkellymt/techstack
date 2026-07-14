@@ -2,7 +2,7 @@
 set -eo pipefail 
 
 main() {
-    # ubuntu 26
+    # apt
     sudo apt update -y
     sudo apt upgrade -y
     
