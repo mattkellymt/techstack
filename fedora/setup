@@ -3,14 +3,10 @@ set -eo pipefail
 
 main() {
 	# fedora 44
-	sudo dnf upgrade -y --refresh
-	sudo dnf install -y dnf5-plugins
-	
-	sudo dnf config-manager addrepo --overwrite --from-repofile="https://cli.github.com/packages/rpm/gh-cli.repo"
-	
+	sudo dnf upgrade -y --refresh		
 	sudo dnf group install -y development-tools
 	sudo dnf install -y \
-		vim pass git gh jq yq bubblewrap gawk zstd cmake libcurl-devel
+		vim pass git dnf5-plugins jq yq bubblewrap gawk zstd cmake libcurl-devel
 	
 	# profile
 	mkdir -p ~/.local/bin
