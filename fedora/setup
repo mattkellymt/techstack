@@ -5,9 +5,7 @@ set -euo pipefail
 sudo dnf upgrade -y
 sudo dnf install -y dnf5-plugins
 
-if ! dnf repoinfo gh-cli &> /dev/null; then
-	sudo dnf config-manager addrepo --from-repofile="https://cli.github.com/packages/rpm/gh-cli.repo"
-fi
+sudo dnf config-manager addrepo --overwrite --from-repofile="https://cli.github.com/packages/rpm/gh-cli.repo"
 
 sudo dnf group install -y development-tools
 sudo dnf install -y \
