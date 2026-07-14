@@ -65,8 +65,8 @@ main() {
 		brew install -y --cask claude-code
 	fi
 	
-	# gemini
-	if ! command -v gemini &> /dev/null; then
+	# Google Antigravity
+	if ! command -v agy &> /dev/null; then
 		brew install -y --cask antigravity-cli
 	fi
 	
