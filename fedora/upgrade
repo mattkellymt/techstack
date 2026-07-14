@@ -2,6 +2,7 @@
 set -euo pipefail 
 
 # fedora 44
+source ~/.bashrc
 sudo dnf upgrade -y
 
 # github
