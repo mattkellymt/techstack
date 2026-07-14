@@ -8,7 +8,7 @@ main() {
 	
 	sudo apt install -y build-essential
 	sudo apt install -y \
-		vim neovim python3-neovim pass git \
+		vim neovim python3-neovim git \
 		bubblewrap gawk zstd cmake libcurl4-openssl-dev
 	
 	# brew
@@ -20,7 +20,7 @@ main() {
 		source ~/.bashrc
 	fi
 	
-	brew install -y jq yq hf htop
+	brew install -y jq yq hf htop pass
 
 	# github
 	mkdir -p ~/github.com/mattkellymt
