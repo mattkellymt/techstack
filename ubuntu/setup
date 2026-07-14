@@ -2,7 +2,7 @@
 set -eo pipefail 
 
 main() {
-	# ubuntu 26
+	# apt
 	sudo apt update -y
 	sudo apt upgrade -y
 	
@@ -10,7 +10,18 @@ main() {
 	sudo apt install -y \
 		vim neovim python3-neovim pass git \
 		bubblewrap gawk zstd cmake libcurl4-openssl-dev
-		
+	
+	# brew
+	if ! command -v brew &> /dev/null; then
+		curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash
+		echo >> ~/.bashrc
+		echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"' >> ~/.bashrc
+		eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"
+		source ~/.bashrc
+	fi
+	
+	brew install -y jq yq hf
+
 	# github
 	mkdir -p ~/github.com/mattkellymt
 	cd ~/github.com/mattkellymt
@@ -30,18 +41,7 @@ main() {
 
 	mkdir -p ~/.local/bin
 	ln -sf ~/github.com/mattkellymt/techstack/ubuntu/stack ~/.local/bin/stack
-	
-	# brew
-	if ! command -v brew &> /dev/null; then
-		curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash
-		echo >> ~/.bashrc
-		echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"' >> ~/.bashrc
-		eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"
-		source ~/.bashrc
-	fi
-	
-	brew install -y jq yq hf
-	
+
 	# uv
 	if ! command -v uv &> /dev/null; then
 		brew install -y uv
