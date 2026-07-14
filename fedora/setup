@@ -3,7 +3,7 @@ set -eo pipefail
 
 main() {
 	# fedora 44
-	sudo dnf upgrade -y
+	sudo dnf upgrade -y --refresh
 	sudo dnf install -y dnf5-plugins
 	
 	sudo dnf config-manager addrepo --overwrite --from-repofile="https://cli.github.com/packages/rpm/gh-cli.repo"
