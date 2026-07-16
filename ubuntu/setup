@@ -19,7 +19,7 @@ main() {
 		source ~/.bashrc
 	fi
 	
-	brew install -y jq yq
+	brew install -y jq yq uv
 
 	# github
 	mkdir -p ~/github.com/mattkellymt
@@ -40,11 +40,6 @@ main() {
 
 	mkdir -p ~/.local/bin
 	ln -sf ~/github.com/mattkellymt/techstack/ubuntu/stack ~/.local/bin/stack
-
-	# uv
-	if ! command -v uv &> /dev/null; then
-		brew install -y uv
-	fi
 	
 	# opencode
 	if ! command -v opencode &> /dev/null; then
