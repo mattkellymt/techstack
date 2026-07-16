@@ -19,16 +19,5 @@ main() {
         git reset --hard origin/main
         git clean -fd
     fi
-
-    # uv
-    cd ~/github.com/mattkellymt/techstack
-    uv tool upgrade --all
-    uv sync --upgrade
-    
-    # ollama
-    curl -fsSL https://ollama.com/install.sh | sh
-    
-    # unsloth
-    curl -fsSL https://unsloth.ai/install.sh | UNSLOTH_SKIP_AUTOSTART=1 bash
 }
 main
