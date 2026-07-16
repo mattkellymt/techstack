@@ -3,7 +3,7 @@ set -eo pipefail
 
 SCRIPT_DIR="$HOME/github.com/mattkellymt/techstack/fedora"
 
-image_name="opencode"
+image_name="agents"
 bridge_name="bridge-0"
 os_ver="44"
 
