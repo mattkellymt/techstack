@@ -47,9 +47,6 @@ main() {
 		brew install -y uv
 	fi
 	
-	cd ~/github.com/mattkellymt/techstack
-	uv sync
-	
 	# opencode
 	if ! command -v opencode &> /dev/null; then
 		brew tap anomalyco/tap
@@ -77,17 +74,5 @@ main() {
 		curl -fsSL https://x.ai/cli/install.sh | bash
 		source ~/.bashrc
 	fi
-	
-	# ollama
-	if ! command -v ollama &> /dev/null; then
-		curl -fsSL https://ollama.com/install.sh | bash
-		source ~/.bashrc
-	fi 
-	
-	# unsloth
-	if ! command -v unsloth &> /dev/null; then
-		curl -fsSL https://unsloth.ai/install.sh | UNSLOTH_SKIP_AUTOSTART=1 bash
-		source ~/.bashrc
-	fi 
 }
 main
