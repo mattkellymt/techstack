@@ -12,6 +12,15 @@ Options:
 EOF
 )
 
+nspawn=$(cat <<EOF
+[Exec]
+NotifyReady=yes
+
+[Network]
+Bridge=${bridge_name}
+EOF
+)
+
 install_os() {
 	local img_name="$1"
 	local os_ver="$2"
@@ -24,13 +33,7 @@ install_os() {
 	sudo systemctl --root="$os_root" enable systemd-networkd systemd-resolved
 	sudo ln -sf ../run/systemd/resolve/stub-resolv.conf "$os_root/etc/resolv.conf"
 	sudo systemd-machine-id-setup --root="$os_root"
-	sudo tee /etc/systemd/nspawn/${img_name}.nspawn >/dev/null <<EOF
-[Exec]
-NotifyReady=yes
-
-[Network]
-Bridge=${bridge_name}
-EOF
+	sudo tee /etc/systemd/nspawn/${img_name}.nspawn >/dev/null <<< "$nspawn"
 }
 
 img_name="fedora"
