@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+
+main() {
+	# dnf
+	sudo dnf upgrade -y --refresh
+
+	# systemd-nspawn container tooling
+	sudo dnf install -y systemd-container systemd-resolved
+}
+main
