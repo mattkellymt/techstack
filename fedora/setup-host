@@ -75,7 +75,9 @@ main() {
 	mkdir -p ~/.local/bin
 	ln -sf ~/github.com/mattkellymt/techstack/fedora/stack ~/.local/bin/stack
 
-	# opencode
-	"$SCRIPT_DIR/create_opencode" --image_name opencode --bridge_name "$bridge_name"
+	# agents
+	for agent in {opencode,codex,claude,antigravity,grok}; do
+		"$SCRIPT_DIR/create_$agent" --image_name "$agent" --bridge_name "$bridge_name"
+	done
 }
 main
