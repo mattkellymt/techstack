@@ -45,9 +45,8 @@ install_os() {
 		--releasever="$os_ver" \
 		--use-host-config \
 		install systemd systemd-networkd systemd-resolved dbus-broker coreutils bash fedora-release util-linux
-	# write the .nspawn (NotifyReady makes 'start' block until booted)
-	sudo install -m 644 /dev/stdin /etc/systemd/nspawn/${image_name}.nspawn <<< "$nspawn"
 
+	sudo install -m 644 /dev/stdin /etc/systemd/nspawn/${image_name}.nspawn <<< "$nspawn"
 	sudo systemd-firstboot --root="$os_root" --delete-root-password --force
 	sudo systemctl --root "$os_root" enable systemd-networkd systemd-resolved
 	sudo machinectl start "$image_name"
