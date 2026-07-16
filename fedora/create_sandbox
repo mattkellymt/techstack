@@ -30,31 +30,3 @@ done
 os_root="/var/lib/machines/${image_name}"
 
 "$SCRIPT_DIR/create_machine" --image_name "$image_name" --bridge_name "$bridge_name" --ver "$os_ver"
-
-# dnf: brew prerequisites + a non-root user (brew refuses root)
-sudo dnf -y \
-	--installroot="$os_root" \
-	--releasever="$os_ver" \
-	--use-host-config \
-	--setopt=install_weak_deps=False \
-	install curl git procps-ng file tar shadow-utils sudo
-sudo systemd-nspawn -q -D "$os_root" --pipe /usr/bin/bash -c '
-	id dev &>/dev/null || useradd -m -G wheel dev
-	echo "dev ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/dev && chmod 440 /etc/sudoers.d/dev
-'
-
-# brew: installed and run as dev, inside the booted machine
-sudo machinectl start "$image_name"
-sudo systemd-run --machine="$image_name" --pipe --wait \
-	/usr/lib/systemd/systemd-networkd-wait-online --interface=host0 --timeout=30
-sudo systemd-run --machine="$image_name" --pipe --wait -p User=dev /usr/bin/bash -l <<'BREW'
-if ! command -v brew &> /dev/null; then
-	NONINTERACTIVE=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-	echo >> "$HOME/.bashrc"
-	echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"' >> "$HOME/.bashrc"
-	eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"
-	source "$HOME/.bashrc"
-fi
-brew install -y jq yq
-BREW
-sudo machinectl stop "$image_name"
