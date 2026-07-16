@@ -35,12 +35,8 @@ main() {
 	sudo systemctl enable --now systemd-resolved
 
 	# write + install the container bridge config (10.0.0.1/24, DHCP server + NAT)
-	tmp=$(mktemp)
-	echo "$netdev"  > "$tmp"
-	sudo install -m 644 "$tmp" /etc/systemd/network/${bridge_name}.netdev
-	echo "$network" > "$tmp"
-	sudo install -m 644 "$tmp" /etc/systemd/network/${bridge_name}.network
-	rm -f "$tmp"
+	sudo install -m 644 /dev/stdin /etc/systemd/network/${bridge_name}.netdev  <<< "$netdev"
+	sudo install -m 644 /dev/stdin /etc/systemd/network/${bridge_name}.network <<< "$network"
 	sudo networkctl reload
 
 	# brew
