@@ -9,7 +9,7 @@ USAGE=$(cat <<EOF
 Usage: create [options]
 
 Options:
-  --image_name NAME     Machine image name (default: ${image_name})
+  --image_name NAME   Machine image name (default: ${image_name})
   --bridge_name NAME  Bridge to attach to (default: ${bridge_name})
   --ver VER           Fedora release version (default: ${os_ver})
 EOF
@@ -17,7 +17,7 @@ EOF
 
 while [ $# -gt 0 ]; do
 	case "$1" in
-		--image_name)    image_name="$2";    shift 2 ;;
+		--image_name)  image_name="$2";  shift 2 ;;
 		--bridge_name) bridge_name="$2"; shift 2 ;;
 		--ver)         os_ver="$2";      shift 2 ;;
 		--help|-h) echo "$USAGE"; exit 0 ;;
@@ -40,8 +40,11 @@ install_os() {
 	local os_root="/var/lib/machines/${image_name}"
 
 	sudo rm -rf "$os_root"
-	sudo dnf -y --installroot="$os_root" --releasever="$os_ver" \
-		--use-host-config --setopt=install_weak_deps=False \
+	sudo dnf -y \
+		--installroot="$os_root" \
+		--releasever="$os_ver" \
+		--use-host-config \
+		--setopt=install_weak_deps=False \
 		install systemd systemd-networkd systemd-resolved dbus-broker coreutils bash fedora-release
 	sudo systemctl --root="$os_root" enable systemd-networkd systemd-resolved
 	sudo ln -sf ../run/systemd/resolve/stub-resolv.conf "$os_root/etc/resolv.conf"

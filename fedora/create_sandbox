@@ -32,7 +32,10 @@ os_root="/var/lib/machines/${image_name}"
 "$SCRIPT_DIR/create_machine" --image_name "$image_name" --bridge_name "$bridge_name" --ver "$os_ver"
 
 # dnf: brew prerequisites + a non-root user (brew refuses root)
-sudo dnf -y --installroot="$os_root" --releasever="$os_ver" --use-host-config \
+sudo dnf -y \
+	--installroot="$os_root" \
+	--releasever="$os_ver" \
+	--use-host-config \
 	--setopt=install_weak_deps=False \
 	install curl git procps-ng file tar shadow-utils sudo
 sudo systemd-nspawn -q -D "$os_root" --pipe /usr/bin/bash -c '

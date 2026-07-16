@@ -1,22 +1,22 @@
 #!/bin/bash
-set -eo pipefail 
+set -eo pipefail
 
 main() {
-    # dnf
-    sudo dnf upgrade -y --refresh
-    
-    # brew
-    brew update
-    brew upgrade -y
+	# dnf
+	sudo dnf upgrade -y --refresh
 
-    # github
-    cd ~/github.com/mattkellymt/techstack
-    git fetch origin main
-    current_branch=$(git branch --show-current)
-    
-    if [ "$current_branch" = "main" ]; then
-        git reset --hard origin/main
-        git clean -fd
-    fi
+	# brew
+	brew update
+	brew upgrade -y
+
+	# github
+	cd ~/github.com/mattkellymt/techstack
+	git fetch origin main
+	current_branch=$(git branch --show-current)
+
+	if [ "$current_branch" = "main" ]; then
+		git reset --hard origin/main
+		git clean -fd
+	fi
 }
 main
