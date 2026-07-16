@@ -6,10 +6,9 @@ main() {
 	sudo apt update -y
 	sudo apt upgrade -y
 	
-	sudo apt install -y build-essential
 	sudo apt install -y \
 		vim neovim python3-neovim git \
-		bubblewrap gawk zstd cmake
+		bubblewrap gawk zstd cmake build-essential
 	
 	# brew
 	if ! command -v brew &> /dev/null; then
@@ -21,26 +20,6 @@ main() {
 	fi
 	
 	brew install -y jq yq hf htop pass curl
-
-	# github
-	mkdir -p ~/github.com/mattkellymt
-	cd ~/github.com/mattkellymt
-	
-	if [ ! -d techstack ]; then
-		git clone https://github.com/mattkellymt/techstack.git
-	fi
-	
-	cd ~/github.com/mattkellymt/techstack/ubuntu
-	git fetch origin main
-	current_branch=$(git branch --show-current)
-	
-	if [ "$current_branch" = "main" ]; then
-	    git reset --hard origin/main
-	    git clean -fd
-	fi
-
-	mkdir -p ~/.local/bin
-	ln -sf ~/github.com/mattkellymt/techstack/ubuntu/stack ~/.local/bin/stack
 
 	# uv
 	if ! command -v uv &> /dev/null; then
@@ -74,5 +53,25 @@ main() {
 		curl -fsSL https://x.ai/cli/install.sh | bash
 		source ~/.bashrc
 	fi
+
+	# github
+	mkdir -p ~/github.com/mattkellymt
+	cd ~/github.com/mattkellymt
+	
+	if [ ! -d techstack ]; then
+		git clone https://github.com/mattkellymt/techstack.git
+	fi
+	
+	cd ~/github.com/mattkellymt/techstack/ubuntu
+	git fetch origin main
+	current_branch=$(git branch --show-current)
+	
+	if [ "$current_branch" = "main" ]; then
+	    git reset --hard origin/main
+	    git clean -fd
+	fi
+
+	mkdir -p ~/.local/bin
+	ln -sf ~/github.com/mattkellymt/techstack/ubuntu/stack ~/.local/bin/stack
 }
 main
