@@ -48,6 +48,7 @@ install_os() {
 
 	sudo systemd-firstboot --root="$os_root" --delete-root-password --force
 	sudo systemctl --root "$os_root" enable systemd-networkd systemd-resolved
+
 	sudo install -m 644 /dev/stdin /etc/systemd/nspawn/${image_name}.nspawn <<< "$nspawn"
 	sudo machinectl start "$image_name"
 }
