@@ -76,7 +76,7 @@ main() {
 	ln -sf ~/github.com/mattkellymt/techstack/fedora/stack ~/.local/bin/stack
 
 	# sandbox
-	"$SCRIPT_DIR/create_fedora" --image_name "sandbox" --bridge_name "$bridge_name"
+	"$SCRIPT_DIR/create_sandbox" --image_name "sandbox" --bridge_name "$bridge_name"
 
 	# agents
 	for agent in {opencode,codex,claude,antigravity,grok}; do
