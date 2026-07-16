@@ -34,9 +34,13 @@ main() {
 	sudo systemctl enable --now systemd-networkd
 	sudo systemctl enable --now systemd-resolved
 
-	# write the container bridge config and load it (10.0.0.1/24, DHCP server + NAT)
-	sudo tee /etc/systemd/network/${bridge_name}.netdev >/dev/null <<< "$netdev"
-	sudo tee /etc/systemd/network/${bridge_name}.network >/dev/null <<< "$network"
+	# write + install the container bridge config (10.0.0.1/24, DHCP server + NAT)
+	tmp=$(mktemp)
+	echo "$netdev"  > "$tmp"
+	sudo install -m 644 "$tmp" /etc/systemd/network/${bridge_name}.netdev
+	echo "$network" > "$tmp"
+	sudo install -m 644 "$tmp" /etc/systemd/network/${bridge_name}.network
+	rm -f "$tmp"
 	sudo networkctl reload
 
 	# build the default nspawn machine (idempotent)

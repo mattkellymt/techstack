@@ -33,7 +33,12 @@ install_os() {
 	sudo systemctl --root="$os_root" enable systemd-networkd systemd-resolved
 	sudo ln -sf ../run/systemd/resolve/stub-resolv.conf "$os_root/etc/resolv.conf"
 	sudo systemd-machine-id-setup --root="$os_root"
-	sudo tee /etc/systemd/nspawn/${img_name}.nspawn >/dev/null <<< "$nspawn"
+
+	local tmp
+	tmp=$(mktemp)
+	echo "$nspawn" > "$tmp"
+	sudo install -m 644 "$tmp" /etc/systemd/nspawn/${img_name}.nspawn
+	rm -f "$tmp"
 }
 
 img_name="fedora"
