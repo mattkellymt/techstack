@@ -14,6 +14,11 @@ main() {
 	sudo systemctl enable --now systemd-networkd
 	sudo systemctl enable --now systemd-resolved
 
+	# install the container bridge (10.0.0.1/24, DHCP server + NAT)
+	sudo install -Dm644 "$SCRIPT_DIR/br0.netdev" /etc/systemd/network/br0.netdev
+	sudo install -Dm644 "$SCRIPT_DIR/br0.network" /etc/systemd/network/br0.network
+	sudo networkctl reload
+
 	# build the default nspawn machine (idempotent)
 	"$SCRIPT_DIR/create_machine"
 }

@@ -20,7 +20,9 @@ install_os() {
 	sudo rm -rf "$os_root"
 	sudo dnf -y --installroot="$os_root" --releasever="$os_ver" \
 		--use-host-config --setopt=install_weak_deps=False \
-		install systemd dbus-broker coreutils bash fedora-release
+		install systemd systemd-networkd systemd-resolved dbus-broker coreutils bash fedora-release
+	sudo systemctl --root="$os_root" enable systemd-networkd systemd-resolved
+	sudo ln -sf ../run/systemd/resolve/stub-resolv.conf "$os_root/etc/resolv.conf"
 	sudo systemd-machine-id-setup --root="$os_root"
 	sudo install -Dm644 "$SCRIPT_DIR/machine.nspawn" \
 		"/etc/systemd/nspawn/${img_name}.nspawn"
