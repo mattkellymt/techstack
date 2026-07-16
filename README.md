@@ -10,7 +10,7 @@ My personal AI/ML tech stack. A space for side projects, experiments, and sharpe
 
 Fedora 44:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/fedora/setup | bash
+curl -fsSL https://raw.githubusercontent.com/mattkellymt/techstack/main/fedora/setup-host | bash
 ```
 
 macOS:
