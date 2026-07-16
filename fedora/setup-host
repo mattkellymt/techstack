@@ -28,8 +28,10 @@ main() {
 	sudo dnf upgrade -y --refresh
 	sudo dnf install -y git
 
-	# systemd-nspawn container tooling
-	sudo dnf install -y systemd-container systemd-resolved
+	# dnf
+	sudo dnf install -y \
+		vim neovim python3-neovim git curl htop pass \
+		systemd-container systemd-resolved
 
 	# ensure container networking + DNS are enabled and running (idempotent)
 	sudo systemctl enable --now systemd-networkd
@@ -53,7 +55,7 @@ main() {
 		source ~/.bashrc
 	fi
 
-	brew install -y jq yq htop pass curl
+	brew install -y jq yq
 
 	# github
 	mkdir -p ~/github.com/mattkellymt
