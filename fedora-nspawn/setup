@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$HOME/github.com/mattkellymt/techstack/fedora-nspawn"
+
 main() {
 	# dnf
 	sudo dnf upgrade -y --refresh
@@ -11,5 +13,8 @@ main() {
 	# ensure container networking + DNS are enabled and running (idempotent)
 	sudo systemctl enable --now systemd-networkd
 	sudo systemctl enable --now systemd-resolved
+
+	# build the default nspawn machine (idempotent)
+	"$SCRIPT_DIR/create_machine"
 }
 main
