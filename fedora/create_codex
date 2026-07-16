@@ -27,4 +27,4 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-"$SCRIPT_DIR/create_machine" --image_name "$image_name" --bridge_name "$bridge_name" --ver "$os_ver"
+"$SCRIPT_DIR/create_fedora" --image_name "$image_name" --bridge_name "$bridge_name" --ver "$os_ver"
