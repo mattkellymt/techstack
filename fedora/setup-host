@@ -76,6 +76,6 @@ main() {
 	ln -sf ~/github.com/mattkellymt/techstack/fedora/stack ~/.local/bin/stack
 
 	# opencode
-	"$SCRIPT_DIR/create_opencode"
+	"$SCRIPT_DIR/create_opencode" --img_name opencode --bridge_name "$bridge_name"
 }
 main
