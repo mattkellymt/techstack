@@ -55,7 +55,7 @@ install_os() {
 	rm -f "$tmp"
 
 	# boot, enable services from inside (systemd-run propagates the exit code), stop
-	sudo machinectl start "$image_name"
+	sudo systemctl start "systemd-nspawn@${image_name}.service"
 	sudo systemd-run --machine="$image_name" --pipe --wait /bin/systemctl enable --now systemd-networkd systemd-resolved
 	sudo systemctl stop "systemd-nspawn@${image_name}.service"
 }
