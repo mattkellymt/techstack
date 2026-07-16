@@ -25,6 +25,15 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
+nspawn=$(cat <<EOF
+[Exec]
+NotifyReady=yes
+
+[Network]
+Bridge=${bridge_name}
+EOF
+)
+
 install_os() {
 	local img_name="$1"
 	local os_ver="$2"
@@ -44,15 +53,6 @@ install_os() {
 	sudo install -m 644 "$tmp" /etc/systemd/nspawn/${img_name}.nspawn
 	rm -f "$tmp"
 }
-
-nspawn=$(cat <<EOF
-[Exec]
-NotifyReady=yes
-
-[Network]
-Bridge=${bridge_name}
-EOF
-)
 
 if ! sudo machinectl image-status "$img_name" &>/dev/null; then
 	install_os "$img_name" "$os_ver"
