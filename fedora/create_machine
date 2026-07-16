@@ -2,7 +2,7 @@
 set -euo pipefail
 
 image_name="fedora"
-bridge_name="br0"
+bridge_name="bridge-0"
 os_ver="44"
 
 USAGE=$(cat <<EOF

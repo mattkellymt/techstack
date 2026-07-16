@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$HOME/github.com/mattkellymt/techstack/fedora"
-bridge_name="br0"
+bridge_name="bridge-0"
 
 netdev=$(cat <<EOF
 [NetDev]
