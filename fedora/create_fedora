@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -eo pipefail
 
 image_name="fedora"
 bridge_name="bridge-0"

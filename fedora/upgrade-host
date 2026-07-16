@@ -10,7 +10,7 @@ main() {
 	brew upgrade -y
 
 	# github
-	cd ~/github.com/mattkellymt/techstack
+	cd "$HOME/github.com/mattkellymt/techstack"
 	git fetch origin main
 	current_branch=$(git branch --show-current)
 

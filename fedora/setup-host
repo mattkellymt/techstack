@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -eo pipefail
 
 SCRIPT_DIR="$HOME/github.com/mattkellymt/techstack/fedora"
 bridge_name="bridge-0"
@@ -26,9 +26,6 @@ EOF
 main() {
 	# dnf
 	sudo dnf upgrade -y --refresh
-	sudo dnf install -y git
-
-	# dnf
 	sudo dnf install -y \
 		vim neovim python3-neovim git curl htop pass \
 		systemd-container systemd-resolved
@@ -49,23 +46,23 @@ main() {
 	# brew
 	if ! command -v brew &> /dev/null; then
 		curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash
-		echo >> ~/.bashrc
-		echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"' >> ~/.bashrc
+		echo >> "$HOME/.bashrc"
+		echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"' >> "$HOME/.bashrc"
 		eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"
-		source ~/.bashrc
+		source "$HOME/.bashrc"
 	fi
 
 	brew install -y jq yq
 
 	# github
-	mkdir -p ~/github.com/mattkellymt
-	cd ~/github.com/mattkellymt
+	mkdir -p "$HOME/github.com/mattkellymt"
+	cd "$HOME/github.com/mattkellymt"
 
 	if [ ! -d techstack ]; then
 		git clone https://github.com/mattkellymt/techstack.git
 	fi
 
-	cd ~/github.com/mattkellymt/techstack/fedora
+	cd "$HOME/github.com/mattkellymt/techstack/fedora"
 	git fetch origin main
 	current_branch=$(git branch --show-current)
 
@@ -74,8 +71,8 @@ main() {
 		git clean -fd
 	fi
 
-	mkdir -p ~/.local/bin
-	ln -sf ~/github.com/mattkellymt/techstack/fedora/stack ~/.local/bin/stack
+	mkdir -p "$HOME/.local/bin"
+	ln -sf "$HOME/github.com/mattkellymt/techstack/fedora/stack" "$HOME/.local/bin/stack"
 
 	# agents
 	for agent in {opencode,codex,claude,antigravity,grok}; do

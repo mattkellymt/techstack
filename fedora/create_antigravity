@@ -1,5 +1,5 @@
 #!/bin/bash
-set -euo pipefail
+set -eo pipefail
 
 SCRIPT_DIR="$HOME/github.com/mattkellymt/techstack/fedora"
 
