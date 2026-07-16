@@ -7,5 +7,9 @@ main() {
 
 	# systemd-nspawn container tooling
 	sudo dnf install -y systemd-container systemd-resolved
+
+	# ensure container networking + DNS are enabled and running (idempotent)
+	sudo systemctl enable --now systemd-networkd
+	sudo systemctl enable --now systemd-resolved
 }
 main
