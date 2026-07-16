@@ -2,6 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$HOME/github.com/mattkellymt/techstack/fedora-nspawn"
+export bridge_name="br0"
 
 main() {
 	# dnf
@@ -14,9 +15,24 @@ main() {
 	sudo systemctl enable --now systemd-networkd
 	sudo systemctl enable --now systemd-resolved
 
-	# install the container bridge (10.0.0.1/24, DHCP server + NAT)
-	sudo install -Dm644 "$SCRIPT_DIR/br0.netdev" /etc/systemd/network/br0.netdev
-	sudo install -Dm644 "$SCRIPT_DIR/br0.network" /etc/systemd/network/br0.network
+	# generate the container bridge (10.0.0.1/24, DHCP server + NAT)
+	sudo tee /etc/systemd/network/${bridge_name}.netdev >/dev/null <<EOF
+[NetDev]
+Name=${bridge_name}
+Kind=bridge
+EOF
+
+	sudo tee /etc/systemd/network/${bridge_name}.network >/dev/null <<EOF
+[Match]
+Name=${bridge_name}
+
+[Network]
+Address=10.0.0.1/24
+DHCPServer=yes
+IPMasquerade=ipv4
+ConfigureWithoutCarrier=yes
+EOF
+
 	sudo networkctl reload
 
 	# build the default nspawn machine (idempotent)

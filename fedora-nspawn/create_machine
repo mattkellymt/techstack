@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-SCRIPT_DIR="$HOME/github.com/mattkellymt/techstack/fedora-nspawn"
+bridge_name="${bridge_name:-br0}"
 
 USAGE=$(cat <<EOF
 Usage: create [options]
@@ -24,8 +24,13 @@ install_os() {
 	sudo systemctl --root="$os_root" enable systemd-networkd systemd-resolved
 	sudo ln -sf ../run/systemd/resolve/stub-resolv.conf "$os_root/etc/resolv.conf"
 	sudo systemd-machine-id-setup --root="$os_root"
-	sudo install -Dm644 "$SCRIPT_DIR/machine.nspawn" \
-		"/etc/systemd/nspawn/${img_name}.nspawn"
+	sudo tee /etc/systemd/nspawn/${img_name}.nspawn >/dev/null <<EOF
+[Exec]
+NotifyReady=yes
+
+[Network]
+Bridge=${bridge_name}
+EOF
 }
 
 img_name="fedora"

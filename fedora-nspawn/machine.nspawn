@@ -1,5 +1,0 @@
-[Exec]
-NotifyReady=yes
-
-[Network]
-Bridge=br0
