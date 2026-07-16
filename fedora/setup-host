@@ -71,6 +71,6 @@ main() {
 	ln -sf "$HOME/github.com/mattkellymt/techstack/fedora/stack" "$HOME/.local/bin/stack"
 
 	# agents
-	"$SCRIPT_DIR/create_agents --image_name agents --bridge_name "$bridge_name"
+	"$SCRIPT_DIR/create_agents" --image_name agents --bridge_name "$bridge_name"
 }
 main
