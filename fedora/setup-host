@@ -1,14 +1,48 @@
 #!/bin/bash
-set -eo pipefail 
+set -euo pipefail
+
+SCRIPT_DIR="$HOME/github.com/mattkellymt/techstack/fedora"
+bridge_name="br0"
+
+netdev=$(cat <<EOF
+[NetDev]
+Name=${bridge_name}
+Kind=bridge
+EOF
+)
+
+network=$(cat <<EOF
+[Match]
+Name=${bridge_name}
+
+[Network]
+Address=10.0.0.1/24
+DHCPServer=yes
+IPMasquerade=ipv4
+ConfigureWithoutCarrier=yes
+EOF
+)
 
 main() {
 	# dnf
-	sudo dnf upgrade -y --refresh		
-	sudo dnf group install -y development-tools
-	sudo dnf install -y \
-		vim neovim python3-neovim git \
-		dnf5-plugins bubblewrap gawk zstd cmake
-	
+	sudo dnf upgrade -y --refresh
+
+	# systemd-nspawn container tooling
+	sudo dnf install -y systemd-container systemd-resolved
+
+	# ensure container networking + DNS are enabled and running (idempotent)
+	sudo systemctl enable --now systemd-networkd
+	sudo systemctl enable --now systemd-resolved
+
+	# write + install the container bridge config (10.0.0.1/24, DHCP server + NAT)
+	tmp=$(mktemp)
+	echo "$netdev"  > "$tmp"
+	sudo install -m 644 "$tmp" /etc/systemd/network/${bridge_name}.netdev
+	echo "$network" > "$tmp"
+	sudo install -m 644 "$tmp" /etc/systemd/network/${bridge_name}.network
+	rm -f "$tmp"
+	sudo networkctl reload
+
 	# brew
 	if ! command -v brew &> /dev/null; then
 		curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash
@@ -23,69 +57,24 @@ main() {
 	# github
 	mkdir -p ~/github.com/mattkellymt
 	cd ~/github.com/mattkellymt
-	
+
 	if [ ! -d techstack ]; then
 		git clone https://github.com/mattkellymt/techstack.git
 	fi
-	
+
 	cd ~/github.com/mattkellymt/techstack/fedora
 	git fetch origin main
 	current_branch=$(git branch --show-current)
-	
+
 	if [ "$current_branch" = "main" ]; then
-	    git reset --hard origin/main
-	    git clean -fd
+		git reset --hard origin/main
+		git clean -fd
 	fi
 
 	mkdir -p ~/.local/bin
 	ln -sf ~/github.com/mattkellymt/techstack/fedora/stack ~/.local/bin/stack
 
-	# uv
-	if ! command -v uv &> /dev/null; then
-		brew install -y uv
-	fi
-	
-	cd ~/github.com/mattkellymt/techstack
-	uv sync
-	
 	# opencode
-	if ! command -v opencode &> /dev/null; then
-		brew tap anomalyco/tap
-		brew trust anomalyco/tap
-		brew install -y anomalyco/tap/opencode
-	fi
-	
-	# codex
-	if ! command -v codex &> /dev/null; then
-		brew install -y --cask codex
-	fi
-	
-	# claude
-	if ! command -v claude &> /dev/null; then
-		brew install -y --cask claude-code
-	fi
-	
-	# google antigravity
-	if ! command -v agy &> /dev/null; then
-		brew install -y --cask antigravity-cli
-	fi
-	
-	# grok
-	if ! command -v grok &> /dev/null; then
-		curl -fsSL https://x.ai/cli/install.sh | bash
-		source ~/.bashrc
-	fi
-	
-	# ollama
-	if ! command -v ollama &> /dev/null; then
-		curl -fsSL https://ollama.com/install.sh | bash
-		source ~/.bashrc
-	fi 
-	
-	# unsloth
-	if ! command -v unsloth &> /dev/null; then
-		curl -fsSL https://unsloth.ai/install.sh | UNSLOTH_SKIP_AUTOSTART=1 bash
-		source ~/.bashrc
-	fi 
+	"$SCRIPT_DIR/create_opencode"
 }
 main
