@@ -34,14 +34,6 @@ Bridge=${bridge_name}
 EOF
 )
 
-# passwordless root autologin on the container console (machinectl login)
-autologin=$(cat <<'EOF'
-[Service]
-ExecStart=
-ExecStart=-/usr/sbin/agetty --autologin root --noreset --noclear --issue-file=/etc/issue:/etc/issue.d:/run/issue.d:/usr/lib/issue.d - ${TERM}
-EOF
-)
-
 install_os() {
 	local image_name="$1"
 	local os_ver="$2"
@@ -55,13 +47,12 @@ install_os() {
 		install systemd systemd-networkd systemd-resolved dbus-broker coreutils bash fedora-release util-linux
 	sudo systemctl --root="$os_root" enable systemd-networkd systemd-resolved
 	sudo systemd-machine-id-setup --root="$os_root"
+	sudo systemd-firstboot --root="$os_root" --delete-root-password --force
 
 	local tmp
 	tmp=$(mktemp)
 	echo "$nspawn" > "$tmp"
 	sudo install -m 644 "$tmp" /etc/systemd/nspawn/${image_name}.nspawn
-	echo "$autologin" > "$tmp"
-	sudo install -D -m 644 "$tmp" "$os_root/etc/systemd/system/container-getty@.service.d/autologin.conf"
 	rm -f "$tmp"
 }
 
