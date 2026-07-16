@@ -71,8 +71,6 @@ main() {
 	ln -sf "$HOME/github.com/mattkellymt/techstack/fedora/stack" "$HOME/.local/bin/stack"
 
 	# agents
-	for agent in {opencode,codex,claude,antigravity,grok}; do
-		"$SCRIPT_DIR/create_$agent" --image_name "$agent" --bridge_name "$bridge_name"
-	done
+	"$SCRIPT_DIR/create_agents --image_name agents --bridge_name "$bridge_name"
 }
 main
