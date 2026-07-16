@@ -26,6 +26,7 @@ EOF
 main() {
 	# dnf
 	sudo dnf upgrade -y --refresh
+	sudo dnf install -y git
 
 	# systemd-nspawn container tooling
 	sudo dnf install -y systemd-container systemd-resolved
