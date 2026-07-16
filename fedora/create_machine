@@ -1,26 +1,6 @@
 #!/bin/bash
 set -euo pipefail
 
-bridge_name="${bridge_name:-br0}"
-
-USAGE=$(cat <<EOF
-Usage: create [options]
-
-Options:
-  --name NAME  Machine image name (default: fedora)
-  --ver VER    Fedora release version (default: 44)
-EOF
-)
-
-nspawn=$(cat <<EOF
-[Exec]
-NotifyReady=yes
-
-[Network]
-Bridge=${bridge_name}
-EOF
-)
-
 install_os() {
 	local img_name="$1"
 	local os_ver="$2"
@@ -42,7 +22,17 @@ install_os() {
 }
 
 img_name="fedora"
+bridge_name="br0"
 os_ver="44"
+
+USAGE=$(cat <<EOF
+Usage: create [options]
+
+Options:
+  --name NAME  Machine image name (default: ${img_name})
+  --ver VER    Fedora release version (default: ${os_ver})
+EOF
+)
 
 while [ $# -gt 0 ]; do
 	case "$1" in
@@ -52,6 +42,15 @@ while [ $# -gt 0 ]; do
 		*) echo "create: unknown option '$1'" >&2; echo "$USAGE" >&2; exit 1 ;;
 	esac
 done
+
+nspawn=$(cat <<EOF
+[Exec]
+NotifyReady=yes
+
+[Network]
+Bridge=${bridge_name}
+EOF
+)
 
 if ! sudo machinectl image-status "$img_name" &>/dev/null; then
 	install_os "$img_name" "$os_ver"
