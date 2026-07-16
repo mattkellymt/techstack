@@ -19,7 +19,7 @@ main() {
 		source ~/.bashrc
 	fi
 	
-	brew install -y jq yq hf htop pass curl
+	brew install -y jq yq htop pass curl
 
 	# github
 	mkdir -p ~/github.com/mattkellymt
