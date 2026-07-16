@@ -48,7 +48,7 @@ main() {
 		source "$HOME/.bashrc"
 	fi
 
-	brew install -y jq yq
+	brew install -y jq yq uv
 
 	# github
 	mkdir -p "$HOME/github.com/mattkellymt"
