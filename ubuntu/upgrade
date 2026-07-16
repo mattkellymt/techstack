@@ -10,6 +10,10 @@ main() {
     brew update
     brew upgrade -y
 
+	# grok
+	curl -fsSL https://x.ai/cli/install.sh | bash
+	source ~/.bashrc
+
     # github
     cd ~/github.com/mattkellymt/techstack
     git fetch origin main
