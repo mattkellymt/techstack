@@ -63,7 +63,7 @@ main() {
 	mkdir -p "$HOME/.local/bin"
 	ln -sf "$HOME/github.com/mattkellymt/techstack/fedora/stack" "$HOME/.local/bin/stack"
 
-	# agents
-	"$SCRIPT_DIR/create_agents" --image_name agents --bridge_name "$bridge_name"
+	# agent
+	"$SCRIPT_DIR/create_agent" --image_name agent --bridge_name "$bridge_name"
 }
 main
