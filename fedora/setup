@@ -27,7 +27,7 @@ main() {
 	# dnf
 	sudo dnf upgrade -y --refresh
 	sudo dnf install -y \
-		vim neovim python3-neovim git curl htop pass \
+		vim git curl htop pass \
 		systemd-container systemd-resolved
 
 	# ensure container networking + DNS are enabled and running (idempotent)
