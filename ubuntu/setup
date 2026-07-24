@@ -11,10 +11,6 @@ sudo apt install -y \
 	vim git curl htop pass \
 	bubblewrap gawk zstd cmake build-essential
 
-# brew
-$script_dir/install_brew
-brew install -y jq yq uv
-
 # github
 mkdir -p "$HOME/github.com/mattkellymt"
 cd "$HOME/github.com/mattkellymt"
@@ -35,30 +31,9 @@ fi
 mkdir -p "$HOME/.local/bin"
 ln -sf "$HOME/github.com/mattkellymt/techstack/fedora/stack" "$HOME/.local/bin/stack"
 
-# opencode
-if ! command -v opencode &> /dev/null; then
-	brew tap anomalyco/tap
-	brew trust anomalyco/tap
-	brew install -y anomalyco/tap/opencode
-fi
+# brew
+$script_dir/install_brew
+brew install -y jq yq uv
 
-# codex
-if ! command -v codex &> /dev/null; then
-	brew install -y --cask codex
-fi
-
-# claude
-if ! command -v claude &> /dev/null; then
-	brew install -y --cask claude-code
-fi
-
-# google antigravity
-if ! command -v agy &> /dev/null; then
-	brew install -y --cask antigravity-cli
-fi
-
-# grok
-if ! command -v grok &> /dev/null; then
-	curl -fsSL https://x.ai/cli/install.sh | bash
-	source ~/.bashrc
-fi
+# agents
+$script_dir/install_agents
