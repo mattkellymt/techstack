@@ -20,7 +20,7 @@ case "${1:-}" in
 		exec "$script_dir/upgrade"
 		;;
 	--help|-h|"")
-		echo "$USAGE"
+		echo "$usage"
 		;;
 	*)
 		echo "stack: unknown command '$1'" >&2
