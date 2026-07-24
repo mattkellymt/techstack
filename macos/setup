@@ -1,9 +1,6 @@
 #!/bin/zsh
 set -eo pipefail
 
-#!/bin/bash
-set -eo pipefail 
-
 script_dir="$HOME/github.com/mattkellymt/techstack/macos"
 
 # brew
