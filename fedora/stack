@@ -14,10 +14,10 @@ EOF
 
 case "${1:-}" in
 	setup)
-		exec "$SCRIPT_DIR/setup-host"
+		exec "$SCRIPT_DIR/setup"
 		;;
 	upgrade)
-		exec "$SCRIPT_DIR/upgrade-host"
+		exec "$SCRIPT_DIR/upgrade"
 		;;
 	--help|-h|"")
 		echo "$USAGE"
