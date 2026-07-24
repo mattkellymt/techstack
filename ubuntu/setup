@@ -7,7 +7,7 @@ main() {
 	sudo apt upgrade -y
 	
 	sudo apt install -y \
-		vim neovim python3-neovim git curl htop pass \
+		vim git curl htop pass \
 		bubblewrap gawk zstd cmake build-essential
 
 	# brew
