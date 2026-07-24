@@ -5,7 +5,7 @@ image_name="fedora"
 bridge_name="bridge-0"
 os_ver="44"
 
-USAGE=$(cat <<EOF
+USAGE=$(cat << EOF
 Usage: create [options]
 
 Options:
@@ -25,7 +25,7 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-nspawn=$(cat <<EOF
+nspawn=$(cat << EOF
 [Exec]
 NotifyReady=yes
 
