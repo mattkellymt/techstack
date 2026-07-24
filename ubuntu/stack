@@ -1,9 +1,9 @@
 #!/bin/bash
 set -eo pipefail
 
-SCRIPT_DIR="$HOME/github.com/mattkellymt/techstack/ubuntu"
+script_dir="$HOME/github.com/mattkellymt/techstack/ubuntu"
 
-USAGE=$(cat <<EOF
+usage=$(cat <<EOF
 Usage: stack <command>
 
 Commands:
@@ -14,17 +14,17 @@ EOF
 
 case "${1:-}" in
     setup)
-        exec "$SCRIPT_DIR/setup"
+        exec "$script_dir/setup"
         ;;
     upgrade)
-        exec "$SCRIPT_DIR/upgrade"
+        exec "$script_dir/upgrade"
         ;;
     --help|-h|"")
-        echo "$USAGE"
+        echo "$usage"
         ;;
     *)
         echo "stack: unknown command '$1'" >&2
-        echo "$USAGE" >&2
+        echo "$usage" >&2
         exit 1
         ;;
 esac
