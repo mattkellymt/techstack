@@ -17,24 +17,24 @@ main() {
 	brew install -y jq yq uv
 
 	# github
-	mkdir -p ~/github.com/mattkellymt
-	cd ~/github.com/mattkellymt
-	
+	mkdir -p "$HOME/github.com/mattkellymt"
+	cd "$HOME/github.com/mattkellymt"
+
 	if [ ! -d techstack ]; then
 		git clone https://github.com/mattkellymt/techstack.git
 	fi
-	
-	cd ~/github.com/mattkellymt/techstack/ubuntu
+
+	cd "$HOME/github.com/mattkellymt/techstack/fedora"
 	git fetch origin main
 	current_branch=$(git branch --show-current)
-	
+
 	if [ "$current_branch" = "main" ]; then
-	    git reset --hard origin/main
-	    git clean -fd
+		git reset --hard origin/main
+		git clean -fd
 	fi
 
-	mkdir -p ~/.local/bin
-	ln -sf ~/github.com/mattkellymt/techstack/ubuntu/stack ~/.local/bin/stack
+	mkdir -p "$HOME/.local/bin"
+	ln -sf "$HOME/github.com/mattkellymt/techstack/fedora/stack" "$HOME/.local/bin/stack"
 	
 	# opencode
 	if ! command -v opencode &> /dev/null; then

@@ -25,7 +25,7 @@ while [ $# -gt 0 ]; do
 	esac
 done
 
-nspawn=$(cat << EOF
+image_nspawn=$(cat << EOF
 [Exec]
 NotifyReady=yes
 
@@ -48,7 +48,7 @@ install_os() {
 
 	sudo systemd-firstboot --root="$os_root" --delete-root-password --force
 	sudo systemctl --root "$os_root" enable systemd-networkd systemd-resolved
-	sudo install -m 644 /dev/stdin /etc/systemd/nspawn/${image_name}.nspawn <<< "$nspawn"
+	sudo install -m 644 /dev/stdin /etc/systemd/nspawn/${image_name}.nspawn <<< "$image_nspawn"
 }
 
 if ! sudo machinectl image-status "$image_name" &>/dev/null; then

@@ -4,14 +4,14 @@ set -eo pipefail
 script_dir="$HOME/github.com/mattkellymt/techstack/fedora"
 bridge_name="bridge-0"
 
-netdev=$(cat << EOF
+bridge_netdev=$(cat << EOF
 [NetDev]
 Name=${bridge_name}
 Kind=bridge
 EOF
 )
 
-network=$(cat << EOF
+bridge_network=$(cat << EOF
 [Match]
 Name=${bridge_name}
 
@@ -29,15 +29,6 @@ main() {
 	sudo dnf install -y \
 		vim git curl htop pass \
 		systemd-container systemd-resolved
-
-	# ensure container networking + DNS are enabled and running (idempotent)
-	sudo systemctl enable --now systemd-networkd
-	sudo systemctl enable --now systemd-resolved
-
-	# write + install the container bridge config (10.0.0.1/24, DHCP server + NAT)
-	sudo install -m 644 /dev/stdin /etc/systemd/network/${bridge_name}.netdev  <<< "$netdev"
-	sudo install -m 644 /dev/stdin /etc/systemd/network/${bridge_name}.network <<< "$network"
-	sudo networkctl reload
 
 	# brew
 	$script_dir/install_brew
@@ -63,7 +54,16 @@ main() {
 	mkdir -p "$HOME/.local/bin"
 	ln -sf "$HOME/github.com/mattkellymt/techstack/fedora/stack" "$HOME/.local/bin/stack"
 
+	# write + install the container bridge config (10.0.0.1/24, DHCP server + NAT)
+	sudo install -m 644 /dev/stdin /etc/systemd/network/${bridge_name}.netdev  <<< "$bridge_netdev"
+	sudo install -m 644 /dev/stdin /etc/systemd/network/${bridge_name}.network <<< "$bridge_network"
+
+	# ensure container networking + DNS are enabled and running (idempotent)
+	sudo systemctl enable --now systemd-networkd
+	sudo systemctl enable --now systemd-resolved
+	sudo networkctl reload
+
 	# fedora
-	"$script_dir/create_fedora" --image_name fedora --bridge_name "$bridge_name"
+	"$script_dir/install_fedora" --image_name fedora --bridge_name "$bridge_name"
 }
 main
