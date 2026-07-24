@@ -1,27 +1,24 @@
 #!/bin/bash
 set -eo pipefail 
 
-main() {
-    # apt
-    sudo apt update -y
-    sudo apt upgrade -y
-    
-    # brew
-    brew update
-    brew upgrade -y
+# apt
+sudo apt update -y
+sudo apt upgrade -y
 
-    # github
-    cd ~/github.com/mattkellymt/techstack
-    git fetch origin main
-    current_branch=$(git branch --show-current)
-    
-    if [ "$current_branch" = "main" ]; then
-        git reset --hard origin/main
-        git clean -fd
-    fi
+# brew
+brew update
+brew upgrade -y
 
-	# grok
-	curl -fsSL https://x.ai/cli/install.sh | bash
-	source ~/.bashrc
-}
-main
+# github
+cd ~/github.com/mattkellymt/techstack
+git fetch origin main
+current_branch=$(git branch --show-current)
+
+if [ "$current_branch" = "main" ]; then
+    git reset --hard origin/main
+    git clean -fd
+fi
+
+# grok
+curl -fsSL https://x.ai/cli/install.sh | bash
+source ~/.bashrc

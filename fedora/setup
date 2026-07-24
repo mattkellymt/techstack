@@ -35,51 +35,48 @@ Bridge=${bridge_name}
 EOF
 )
 
-main() {
-	# dnf
-	sudo dnf upgrade -y --refresh
-	sudo dnf install -y \
-		vim git curl htop pass \
-		systemd-container systemd-resolved
+# dnf
+sudo dnf upgrade -y --refresh
+sudo dnf install -y \
+	vim git curl htop pass \
+	systemd-container systemd-resolved
 
-	# brew
-	$script_dir/install_brew
-	brew install -y jq yq uv
+# brew
+$script_dir/install_brew
+brew install -y jq yq uv
 
-	# github
-	mkdir -p "$HOME/github.com/mattkellymt"
-	cd "$HOME/github.com/mattkellymt"
+# github
+mkdir -p "$HOME/github.com/mattkellymt"
+cd "$HOME/github.com/mattkellymt"
 
-	if [ ! -d techstack ]; then
-		git clone https://github.com/mattkellymt/techstack.git
-	fi
+if [ ! -d techstack ]; then
+	git clone https://github.com/mattkellymt/techstack.git
+fi
 
-	cd "$HOME/github.com/mattkellymt/techstack/fedora"
-	git fetch origin main
-	current_branch=$(git branch --show-current)
+cd "$HOME/github.com/mattkellymt/techstack/fedora"
+git fetch origin main
+current_branch=$(git branch --show-current)
 
-	if [ "$current_branch" = "main" ]; then
-		git reset --hard origin/main
-		git clean -fd
-	fi
+if [ "$current_branch" = "main" ]; then
+	git reset --hard origin/main
+	git clean -fd
+fi
 
-	mkdir -p "$HOME/.local/bin"
-	ln -sf "$HOME/github.com/mattkellymt/techstack/fedora/stack" "$HOME/.local/bin/stack"
+mkdir -p "$HOME/.local/bin"
+ln -sf "$HOME/github.com/mattkellymt/techstack/fedora/stack" "$HOME/.local/bin/stack"
 
-	# write + install the container bridge config (10.0.0.1/24, DHCP server + NAT)
-	sudo install -m 644 /dev/stdin /etc/systemd/network/${bridge_name}.netdev  <<< "$bridge_netdev"
-	sudo install -m 644 /dev/stdin /etc/systemd/network/${bridge_name}.network <<< "$bridge_network"
-	sudo install -m 644 /dev/stdin /etc/systemd/nspawn/${image_name}.nspawn <<< "$image_nspawn"
+# write + install the container bridge config (10.0.0.1/24, DHCP server + NAT)
+sudo install -m 644 /dev/stdin /etc/systemd/network/${bridge_name}.netdev  <<< "$bridge_netdev"
+sudo install -m 644 /dev/stdin /etc/systemd/network/${bridge_name}.network <<< "$bridge_network"
+sudo install -m 644 /dev/stdin /etc/systemd/nspawn/${image_name}.nspawn <<< "$image_nspawn"
 
-	# ensure container networking + DNS are enabled and running (idempotent)
-	sudo systemctl enable --now systemd-networkd
-	sudo systemctl enable --now systemd-resolved
-	sudo networkctl reload
+# ensure container networking + DNS are enabled and running (idempotent)
+sudo systemctl enable --now systemd-networkd
+sudo systemctl enable --now systemd-resolved
+sudo networkctl reload
 
-	# create fedora container
-	sudo machinectl stop "$image_name"
-	sudo rm -rf "$os_root"
-	"$script_dir/install_fedora" "$os_root" "$os_ver"
-	sudo machinectl start "$image_name"
-}
-main
+# create fedora container
+sudo machinectl stop "$image_name"
+sudo rm -rf "$os_root"
+"$script_dir/install_fedora" "$os_root" "$os_ver"
+sudo machinectl start "$image_name"

@@ -3,65 +3,62 @@ set -eo pipefail
 
 script_dir="$HOME/github.com/mattkellymt/techstack/ubuntu"
 
-main() {
-	# apt
-	sudo apt update -y
-	sudo apt upgrade -y
-	
-	sudo apt install -y \
-		vim git curl htop pass \
-		bubblewrap gawk zstd cmake build-essential
+# apt
+sudo apt update -y
+sudo apt upgrade -y
 
-	# brew
-	$script_dir/install_brew
-	brew install -y jq yq uv
+sudo apt install -y \
+	vim git curl htop pass \
+	bubblewrap gawk zstd cmake build-essential
 
-	# github
-	mkdir -p "$HOME/github.com/mattkellymt"
-	cd "$HOME/github.com/mattkellymt"
+# brew
+$script_dir/install_brew
+brew install -y jq yq uv
 
-	if [ ! -d techstack ]; then
-		git clone https://github.com/mattkellymt/techstack.git
-	fi
+# github
+mkdir -p "$HOME/github.com/mattkellymt"
+cd "$HOME/github.com/mattkellymt"
 
-	cd "$HOME/github.com/mattkellymt/techstack/fedora"
-	git fetch origin main
-	current_branch=$(git branch --show-current)
+if [ ! -d techstack ]; then
+	git clone https://github.com/mattkellymt/techstack.git
+fi
 
-	if [ "$current_branch" = "main" ]; then
-		git reset --hard origin/main
-		git clean -fd
-	fi
+cd "$HOME/github.com/mattkellymt/techstack/fedora"
+git fetch origin main
+current_branch=$(git branch --show-current)
 
-	mkdir -p "$HOME/.local/bin"
-	ln -sf "$HOME/github.com/mattkellymt/techstack/fedora/stack" "$HOME/.local/bin/stack"
-	
-	# opencode
-	if ! command -v opencode &> /dev/null; then
-		brew tap anomalyco/tap
-		brew trust anomalyco/tap
-		brew install -y anomalyco/tap/opencode
-	fi
-	
-	# codex
-	if ! command -v codex &> /dev/null; then
-		brew install -y --cask codex
-	fi
-	
-	# claude
-	if ! command -v claude &> /dev/null; then
-		brew install -y --cask claude-code
-	fi
-	
-	# google antigravity
-	if ! command -v agy &> /dev/null; then
-		brew install -y --cask antigravity-cli
-	fi
-	
-	# grok
-	if ! command -v grok &> /dev/null; then
-		curl -fsSL https://x.ai/cli/install.sh | bash
-		source ~/.bashrc
-	fi
-}
-main
+if [ "$current_branch" = "main" ]; then
+	git reset --hard origin/main
+	git clean -fd
+fi
+
+mkdir -p "$HOME/.local/bin"
+ln -sf "$HOME/github.com/mattkellymt/techstack/fedora/stack" "$HOME/.local/bin/stack"
+
+# opencode
+if ! command -v opencode &> /dev/null; then
+	brew tap anomalyco/tap
+	brew trust anomalyco/tap
+	brew install -y anomalyco/tap/opencode
+fi
+
+# codex
+if ! command -v codex &> /dev/null; then
+	brew install -y --cask codex
+fi
+
+# claude
+if ! command -v claude &> /dev/null; then
+	brew install -y --cask claude-code
+fi
+
+# google antigravity
+if ! command -v agy &> /dev/null; then
+	brew install -y --cask antigravity-cli
+fi
+
+# grok
+if ! command -v grok &> /dev/null; then
+	curl -fsSL https://x.ai/cli/install.sh | bash
+	source ~/.bashrc
+fi
