@@ -76,7 +76,7 @@ main() {
 	sudo systemctl enable --now systemd-resolved
 	sudo networkctl reload
 
-	# fedora
+	# create fedora container
 	sudo machinectl stop "$image_name"
 	sudo rm -rf "$os_root"
 	"$script_dir/install_fedora" "$os_root" "$os_ver"
