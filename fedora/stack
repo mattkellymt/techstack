@@ -3,7 +3,7 @@ set -eo pipefail
 
 SCRIPT_DIR="$HOME/github.com/mattkellymt/techstack/fedora"
 
-USAGE=$(cat <<EOF
+usage=$(cat <<EOF
 Usage: stack <command>
 
 Commands:
@@ -24,7 +24,7 @@ case "${1:-}" in
 		;;
 	*)
 		echo "stack: unknown command '$1'" >&2
-		echo "$USAGE" >&2
+		echo "$usage" >&2
 		exit 1
 		;;
 esac
