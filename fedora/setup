@@ -3,6 +3,9 @@ set -eo pipefail
 
 script_dir="$HOME/github.com/mattkellymt/techstack/fedora"
 bridge_name="bridge-0"
+image_name="fedora"
+os_root="/var/lib/machines/${image_name}"
+os_ver="44"
 
 bridge_netdev=$(cat << EOF
 [NetDev]
@@ -20,6 +23,15 @@ Address=10.0.0.1/24
 DHCPServer=yes
 IPMasquerade=ipv4
 ConfigureWithoutCarrier=yes
+EOF
+)
+
+image_nspawn=$(cat << EOF
+[Exec]
+NotifyReady=yes
+
+[Network]
+Bridge=${bridge_name}
 EOF
 )
 
@@ -57,6 +69,7 @@ main() {
 	# write + install the container bridge config (10.0.0.1/24, DHCP server + NAT)
 	sudo install -m 644 /dev/stdin /etc/systemd/network/${bridge_name}.netdev  <<< "$bridge_netdev"
 	sudo install -m 644 /dev/stdin /etc/systemd/network/${bridge_name}.network <<< "$bridge_network"
+	sudo install -m 644 /dev/stdin /etc/systemd/nspawn/${image_name}.nspawn <<< "$image_nspawn"
 
 	# ensure container networking + DNS are enabled and running (idempotent)
 	sudo systemctl enable --now systemd-networkd
@@ -64,6 +77,9 @@ main() {
 	sudo networkctl reload
 
 	# fedora
-	"$script_dir/install_fedora" --image_name fedora --bridge_name "$bridge_name"
+	sudo machinectl stop "$image_name"
+	sudo rm -rf "$os_root"
+	"$script_dir/install_fedora" "$os_root" "$os_ver"
+	sudo machinectl start "$image_name"
 }
 main

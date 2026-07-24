@@ -1,59 +1,15 @@
 #!/bin/bash
 set -eo pipefail
 
-image_name="fedora"
-bridge_name="bridge-0"
-os_ver="44"
+os_root=$1
+os_ver=$2
 
-usage=$(cat << EOF
-Usage: create [options]
+sudo dnf -y \
+	--installroot="$os_root" \
+	--releasever="$os_ver" \
+	--use-host-config \
+	install systemd systemd-networkd systemd-resolved \
+	dbus-broker coreutils bash fedora-release util-linux
 
-Options:
-  --image_name NAME   Machine image name (default: ${image_name})
-  --bridge_name NAME  Bridge to attach to (default: ${bridge_name})
-  --ver VER           Fedora release version (default: ${os_ver})
-EOF
-)
-
-while [ $# -gt 0 ]; do
-	case "$1" in
-		--image_name)  image_name="$2";  shift 2 ;;
-		--bridge_name) bridge_name="$2"; shift 2 ;;
-		--ver)         os_ver="$2";      shift 2 ;;
-		--help|-h) echo "$USAGE"; exit 0 ;;
-		*) echo "create: unknown option '$1'" >&2; echo "$usage" >&2; exit 1 ;;
-	esac
-done
-
-image_nspawn=$(cat << EOF
-[Exec]
-NotifyReady=yes
-
-[Network]
-Bridge=${bridge_name}
-EOF
-)
-
-install_os() {
-	local image_name="$1"
-	local os_ver="$2"
-	local os_root="/var/lib/machines/${image_name}"
-
-	sudo rm -rf "$os_root"
-	sudo dnf -y \
-		--installroot="$os_root" \
-		--releasever="$os_ver" \
-		--use-host-config \
-		install systemd systemd-networkd systemd-resolved dbus-broker coreutils bash fedora-release util-linux
-
-	sudo systemd-firstboot --root="$os_root" --delete-root-password --force
-	sudo systemctl --root "$os_root" enable systemd-networkd systemd-resolved
-	sudo install -m 644 /dev/stdin /etc/systemd/nspawn/${image_name}.nspawn <<< "$image_nspawn"
-}
-
-if ! sudo machinectl image-status "$image_name" &>/dev/null; then
-	install_os "$image_name" "$os_ver"
-fi
-
-sudo machinectl start "$image_name"
-
+sudo systemd-firstboot --root="$os_root" --delete-root-password --force
+sudo systemctl --root "$os_root" enable systemd-networkd systemd-resolved
