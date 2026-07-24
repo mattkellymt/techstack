@@ -2,7 +2,7 @@
 My personal AI/ML tech stack. A space for side projects, experiments, and sharpening my skills.
 
 ## OS Support
-- [x] Fedora
+- [ ] Fedora
 - [ ] macOS (Planned)
 - [x] Ubuntu
 
