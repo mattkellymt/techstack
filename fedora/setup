@@ -37,7 +37,7 @@ EOF
 
 # dnf
 sudo dnf upgrade -y --refresh
-sudo dnf install -y systemd-container systemd-resolved
+sudo dnf install -y systemd systemd-container systemd-resolved
 
 # write + install the container bridge config (10.0.0.1/24, DHCP server + NAT)
 sudo install -m 644 /dev/stdin /etc/systemd/network/${bridge_name}.netdev  <<< "$bridge_netdev"
