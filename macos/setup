@@ -1,2 +1,33 @@
 #!/bin/zsh
 set -eo pipefail
+
+#!/bin/bash
+set -eo pipefail 
+
+script_dir="$HOME/github.com/mattkellymt/techstack/macos"
+
+# brew
+brew install -y jq yq uv git
+
+# agents
+$script_dir/install_agents
+
+# github
+mkdir -p "$HOME/github.com/mattkellymt"
+cd "$HOME/github.com/mattkellymt"
+
+if [ ! -d techstack ]; then
+	git clone https://github.com/mattkellymt/techstack.git
+fi
+
+cd "$HOME/github.com/mattkellymt/techstack/fedora"
+git fetch origin main
+current_branch=$(git branch --show-current)
+
+if [ "$current_branch" = "main" ]; then
+	git reset --hard origin/main
+	git clean -fd
+fi
+
+mkdir -p "$HOME/.local/bin"
+ln -sf "$HOME/github.com/mattkellymt/techstack/fedora/stack" "$HOME/.local/bin/stack"

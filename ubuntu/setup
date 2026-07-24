@@ -11,6 +11,13 @@ sudo apt install -y \
 	vim git curl htop pass \
 	bubblewrap gawk zstd cmake build-essential
 
+# brew
+$script_dir/install_brew
+brew install -y jq yq uv
+
+# agents
+$script_dir/install_agents
+
 # github
 mkdir -p "$HOME/github.com/mattkellymt"
 cd "$HOME/github.com/mattkellymt"
@@ -30,10 +37,3 @@ fi
 
 mkdir -p "$HOME/.local/bin"
 ln -sf "$HOME/github.com/mattkellymt/techstack/fedora/stack" "$HOME/.local/bin/stack"
-
-# brew
-$script_dir/install_brew
-brew install -y jq yq uv
-
-# agents
-$script_dir/install_agents

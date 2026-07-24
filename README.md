@@ -3,7 +3,7 @@ My personal AI/ML tech stack. A space for side projects, experiments, and sharpe
 
 ## OS Support
 - [ ] Fedora
-- [ ] macOS
+- [x] macOS
 - [x] Ubuntu
 
 ## Install and configure the software stack

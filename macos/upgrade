@@ -1,16 +1,12 @@
-#!/bin/bash
+#!/bin/zsh
 set -eo pipefail 
-
-# apt
-sudo apt update -y
-sudo apt upgrade -y
 
 # brew
 brew update
 brew upgrade -y
 
 # grok
-curl -fsSL https://x.ai/cli/install.sh | bash
+curl -fsSL https://x.ai/cli/install.sh | zsh
 source ~/.bashrc
 
 # github

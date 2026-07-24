@@ -1,0 +1,30 @@
+#!/bin/zsh
+set -eo pipefail 
+
+# opencode
+if ! command -v opencode &> /dev/null; then
+	brew tap anomalyco/tap
+	brew trust anomalyco/tap
+	brew install -y anomalyco/tap/opencode
+fi
+
+# codex
+if ! command -v codex &> /dev/null; then
+	brew install -y --cask codex
+fi
+
+# claude
+if ! command -v claude &> /dev/null; then
+	brew install -y --cask claude-code
+fi
+
+# google antigravity
+if ! command -v agy &> /dev/null; then
+	brew install -y --cask antigravity-cli
+fi
+
+# grok
+if ! command -v grok &> /dev/null; then
+	curl -fsSL https://x.ai/cli/install.sh | zsh
+	source ~/.bashrc
+fi
