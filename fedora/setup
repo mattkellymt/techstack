@@ -78,5 +78,13 @@ sudo networkctl reload
 # create fedora container
 sudo machinectl stop "$image_name"
 sudo rm -rf "$os_root"
-"$script_dir/install_fedora" "$os_root" "$os_ver"
+sudo dnf -y \
+	--installroot="$os_root" \
+	--releasever="$os_ver" \
+	--use-host-config \
+	install systemd systemd-networkd systemd-resolved \
+	dbus-broker coreutils bash fedora-release util-linux
+
+sudo systemd-firstboot --root="$os_root" --delete-root-password --force
+sudo systemctl --root "$os_root" enable systemd-networkd systemd-resolved
 sudo machinectl start "$image_name"
