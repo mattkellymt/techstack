@@ -1,6 +1,8 @@
 #!/bin/bash
 set -eo pipefail 
 
+script_dir="$HOME/github.com/mattkellymt/techstack/ubuntu"
+
 main() {
 	# apt
 	sudo apt update -y
@@ -11,14 +13,7 @@ main() {
 		bubblewrap gawk zstd cmake build-essential
 
 	# brew
-	if ! command -v brew &> /dev/null; then
-		curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash
-		echo >> ~/.bashrc
-		echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"' >> ~/.bashrc
-		eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"
-		source ~/.bashrc
-	fi
-	
+	$script_dir/install_brew
 	brew install -y jq yq uv
 
 	# github
