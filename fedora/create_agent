@@ -7,7 +7,7 @@ image_name="agent"
 bridge_name="bridge-0"
 os_ver="44"
 
-USAGE=$(cat <<EOF
+usage=$(cat <<EOF
 Usage: create [options]
 
 Options:
@@ -23,7 +23,7 @@ while [ $# -gt 0 ]; do
 		--bridge_name) bridge_name="$2"; shift 2 ;;
 		--ver)         os_ver="$2";      shift 2 ;;
 		--help|-h) echo "$USAGE"; exit 0 ;;
-		*) echo "create: unknown option '$1'" >&2; echo "$USAGE" >&2; exit 1 ;;
+		*) echo "create: unknown option '$1'" >&2; echo "$usage" >&2; exit 1 ;;
 	esac
 done
 
