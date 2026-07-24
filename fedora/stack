@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 
-SCRIPT_DIR="$HOME/github.com/mattkellymt/techstack/fedora"
+script_dir="$HOME/github.com/mattkellymt/techstack/fedora"
 
 usage=$(cat <<EOF
 Usage: stack <command>
@@ -14,10 +14,10 @@ EOF
 
 case "${1:-}" in
 	setup)
-		exec "$SCRIPT_DIR/setup"
+		exec "$script_dir/setup"
 		;;
 	upgrade)
-		exec "$SCRIPT_DIR/upgrade"
+		exec "$script_dir/upgrade"
 		;;
 	--help|-h|"")
 		echo "$USAGE"
