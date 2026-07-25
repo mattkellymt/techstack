@@ -82,7 +82,6 @@ sudo dnf install -y systemd systemd-container systemd-resolved mkosi
 # install the container bridge config
 sudo install -m 644 "${script_dir}/${bridge_name}.netdev" "/etc/systemd/network/${bridge_name}.netdev"
 sudo install -m 644 "${script_dir}/${bridge_name}.network" "/etc/systemd/network/${bridge_name}.network"
-sudo install -m 644 "${script_dir}/${image_name}.nspawn" "/etc/systemd/nspawn/${image_name}.nspawn"
 
 # ensure container networking + DNS are enabled and running (idempotent)
 sudo systemctl enable --now systemd-networkd
@@ -95,6 +94,7 @@ sudo machinectl remove "${image_name}" 2>/dev/null || true
 
 # create a container
 sudo mkosi --directory "${script_dir}" --include "${script_dir}/${image_name}.mkosi.conf" --force build
+sudo install -m 644 "${script_dir}/${image_name}.nspawn" "/etc/systemd/nspawn/${image_name}.nspawn"
 
 sudo systemctl --root "${os_root}" enable systemd-networkd systemd-resolved
 sudo systemctl start "systemd-nspawn@${image_name}.service"
