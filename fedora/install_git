@@ -5,7 +5,6 @@ GH_TOKEN=$1
 GIT_USER=${USER}
 GIT_EMAIL=""
 
-sudo dnf -y upgrade
 sudo dnf -y install git gh
 
 git config --global user.name ${GIT_USER}
