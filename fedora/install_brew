@@ -1,10 +1,9 @@
 #!/bin/bash
 set -eo pipefail
 
-if ! command -v brew &> /dev/null; then
-  curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh | bash
-  echo >> "$HOME/.bashrc"
-  echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"' >> "$HOME/.bashrc"
-  eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv bash)"
-  source "$HOME/.bashrc"
+if ! command -v brew >/dev/null 2>&1; then
+	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+	echo >> "${HOME}/.bashrc"
+	echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> "${HOME}/.bashrc"
+	eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 fi
