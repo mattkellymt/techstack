@@ -57,10 +57,6 @@ Output=${image_name}
 [Content]
 Packages=
 	fedora-release
-	systemd
-	systemd-container
-	systemd-networkd
-	mkosi
 	bash
 	dnf
 	sudo
@@ -84,9 +80,7 @@ install -m 644 /dev/stdin "${script_dir}/${image_name}.mkosi.conf" <<< "${mkosi_
 
 # dnf
 sudo dnf upgrade -y --refresh
-sudo dnf install -y \
-	systemd systemd-container systemd-networkd mkosi \
-	bash dnf sudo
+sudo dnf install -y systemd-container mkosi
 
 # install the container bridge config
 sudo rm -f /etc/systemd/network/*
@@ -110,3 +104,4 @@ sudo install -m 440 "${script_dir}/${agent_user}.sudoers" "${os_root}/etc/sudoer
 sudo rm -f /etc/systemd/nspawn/*
 sudo install -m 644 "${script_dir}/${image_name}.nspawn" "/etc/systemd/nspawn/${image_name}.nspawn"
 sudo systemctl start "systemd-nspawn@${image_name}.service"
+sudo machinectl shell ${agent_user}@${image_name} /bin/bash -lc "sudo dnf -y upgrade"
