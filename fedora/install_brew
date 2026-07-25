@@ -1,9 +1,16 @@
 #!/bin/bash
 set -eo pipefail
 
-if ! command -v brew >/dev/null 2>&1; then
-	/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-	echo >> "${HOME}/.bashrc"
-	echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> "${HOME}/.bashrc"
-	eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+if command -v brew > /dev/null 2>&1; then
+	exit 0;
 fi
+
+export NONINTERACTIVE=1
+	
+sudo dnf -y group install development-tools
+sudo dnf -y install procps-ng curl file bubblewrap
+	
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+echo >> "${HOME}/.bashrc"
+echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> "${HOME}/.bashrc"
+eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
