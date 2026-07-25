@@ -1,0 +1,16 @@
+#!/bin/bash
+set -eo pipefail
+
+GIT_USER=${USER}
+GIT_EMAIL=""
+GH_TOKEN=$1
+
+sudo dnf -y upgrade
+sudo dnf -y install git gh
+
+git config --global user.name ${GIT_USER}
+git config --global user.email ${GIT_EMAIL}
+
+gh auth login --with-token <<< ${GH_TOKEN}
+gh auth setup-git
+gh repo list

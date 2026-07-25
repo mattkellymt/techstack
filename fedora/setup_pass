@@ -1,0 +1,8 @@
+#!/bin/bash
+set -eu pipefail
+
+sudo dnf -y install pass pinentry
+if ! gpg --list-keys ${USER} &> /dev/null; then
+	gpg --batch --passphrase "" --quick-gen-key ${USER} default default never
+	pass init ${USER}
+fi
