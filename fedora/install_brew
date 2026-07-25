@@ -5,6 +5,7 @@ if command -v brew > /dev/null 2>&1; then
 	exit 0;
 fi
 
+# https://docs.brew.sh/Homebrew-on-Linux
 export NONINTERACTIVE=1
 	
 sudo dnf -y group install development-tools
