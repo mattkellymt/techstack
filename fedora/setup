@@ -74,7 +74,7 @@ EOF
 sudo dnf -y upgrade
 sudo dnf -y install systemd systemd-networkd systemd-container mkosi
 
-# config files
+# create the config files
 sudo mkdir -p "${script_dir}"/config
 rm -f "${script_dir}"/config/*
 install -m 644 /dev/stdin "${script_dir}/config/${bridge_name}.netdev" <<< "${bridge_netdev}"
@@ -83,7 +83,7 @@ install -m 644 /dev/stdin "${script_dir}/config/${image_name}.nspawn" <<< "${ima
 install -m 440 /dev/stdin "${script_dir}/config/${agent_user}.sudoers" <<< "${agent_sudoers}"
 install -m 644 /dev/stdin "${script_dir}/config/${image_name}.mkosi.conf" <<< "${mkosi_config}"
 
-# install the container bridge config
+# install the bridge 
 sudo mkdir -p /etc/systemd/network
 sudo rm -f /etc/systemd/network/*
 sudo install -m 644 "${script_dir}/config/${bridge_name}.netdev" "/etc/systemd/network/${bridge_name}.netdev"
@@ -98,8 +98,6 @@ sudo mkosi --directory "${script_dir}" --include "${script_dir}/config/${image_n
 sudo useradd --root "${os_root}" --create-home --user-group --groups wheel "${agent_user}"
 sudo passwd --root "${os_root}" --delete "${agent_user}"
 sudo install -m 440 "${script_dir}/config/${agent_user}.sudoers" "${os_root}/etc/sudoers.d/${agent_user}"
-
-# start the container
 sudo mkdir -p /etc/systemd/nspawn
 sudo rm -f /etc/systemd/nspawn/*
 sudo install -m 644 "${script_dir}/config/${image_name}.nspawn" "/etc/systemd/nspawn/${image_name}.nspawn"
