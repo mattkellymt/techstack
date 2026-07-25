@@ -3,7 +3,5 @@ set -eo pipefail
 
 sudo dnf -y install curl tar awk bubblewrap
 
-if ! command -v codex &> /dev/null; then
-	export CODEX_NON_INTERACTIVE=1
-	curl -fsSL https://chatgpt.com/codex/install.sh | sh
-fi
+export CODEX_NON_INTERACTIVE=1
+curl -fsSL https://chatgpt.com/codex/install.sh | sh
