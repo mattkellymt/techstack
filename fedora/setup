@@ -58,8 +58,8 @@ sudo dnf -y \
 	--installroot="$os_root" \
 	--releasever="$os_ver" \
 	--use-host-config \
-	install systemd systemd-networkd systemd-resolved \
-	dnf bash fedora-release
+	install fedora-release sudo bash dnf \
+	systemd systemd-networkd systemd-resolved
 
 sudo systemd-firstboot --root="$os_root" --delete-root-password --force
 sudo systemctl --root "$os_root" enable systemd-networkd systemd-resolved
