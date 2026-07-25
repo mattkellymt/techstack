@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 
-sudo dnf -y install curl tar awk
+sudo dnf -y install curl tar awk bubblewrap
 
 if ! command -v &> /dev/null; then
 	export CODEX_NON_INTERACTIVE=1
