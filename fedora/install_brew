@@ -2,6 +2,7 @@
 set -eo pipefail
 
 if command -v brew > /dev/null 2>&1; then
+	brew doctor
 	exit 0;
 fi
 
@@ -15,3 +16,5 @@ sudo dnf -y install procps-ng curl file bubblewrap
 echo >> "${HOME}/.bashrc"
 echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"' >> "${HOME}/.bashrc"
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+
+brew doctor
