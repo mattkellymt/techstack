@@ -70,6 +70,10 @@ Bootable=no
 EOF
 )
 
+# dnf
+sudo dnf -y upgrade
+sudo dnf -y install systemd systemd-networkd systemd-container mkosi
+
 # config files
 rm -f "${script_dir}"/config/*
 install -m 644 /dev/stdin "${script_dir}/config/${bridge_name}.netdev" <<< "${bridge_netdev}"
@@ -78,31 +82,26 @@ install -m 644 /dev/stdin "${script_dir}/config/${image_name}.nspawn" <<< "${ima
 install -m 440 /dev/stdin "${script_dir}/config/${agent_user}.sudoers" <<< "${agent_sudoers}"
 install -m 644 /dev/stdin "${script_dir}/config/${image_name}.mkosi.conf" <<< "${mkosi_config}"
 
-# dnf
-sudo dnf -y upgrade
-sudo dnf -y install systemd systemd-networkd systemd-container mkosi
-
 # install the container bridge config
+sudo mkdir -p /etc/systemd/network
 sudo rm -f /etc/systemd/network/*
 sudo install -m 644 "${script_dir}/config/${bridge_name}.netdev" "/etc/systemd/network/${bridge_name}.netdev"
 sudo install -m 644 "${script_dir}/config/${bridge_name}.network" "/etc/systemd/network/${bridge_name}.network"
 sudo systemctl enable --now systemd-networkd
 sudo networkctl reload
 
-# remove the existing container
+# create the container
 sudo systemctl stop "systemd-nspawn@${image_name}.service"
 sudo machinectl remove "${image_name}" 2>/dev/null || true
-
-# create a container
 sudo mkosi --directory "${script_dir}" --include "${script_dir}/config/${image_name}.mkosi.conf" --force build
-sudo systemctl --root "${os_root}" enable systemd-networkd
 sudo useradd --root "${os_root}" --create-home --user-group --groups wheel "${agent_user}"
 sudo passwd --root "${os_root}" --delete "${agent_user}"
 sudo install -m 440 "${script_dir}/config/${agent_user}.sudoers" "${os_root}/etc/sudoers.d/${agent_user}"
 
 # start the container
-sudo install -d -m 755 /etc/systemd/nspawn
+sudo mkdir -p /etc/systemd/nspawn
 sudo rm -f /etc/systemd/nspawn/*
 sudo install -m 644 "${script_dir}/config/${image_name}.nspawn" "/etc/systemd/nspawn/${image_name}.nspawn"
+sudo systemctl --root "${os_root}" enable systemd-networkd
 sudo systemctl start "systemd-nspawn@${image_name}.service"
 sudo machinectl shell "${agent_user}"@"${image_name}" /bin/bash -lc "sudo dnf -y upgrade"
