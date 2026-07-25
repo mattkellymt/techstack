@@ -1,20 +1,21 @@
 #!/bin/zsh
-set -eo pipefail 
+set -eo pipefail
+
+repo_dir="${HOME}/github.com/mattkellymt/techstack"
 
 # brew
 brew update
-brew upgrade -y
+brew upgrade
 
 # grok
 curl -fsSL https://x.ai/cli/install.sh | zsh
-source ~/.bashrc
 
 # github
-cd ~/github.com/mattkellymt/techstack
+cd "${repo_dir}"
 git fetch origin main
 current_branch=$(git branch --show-current)
 
-if [ "$current_branch" = "main" ]; then
-    git reset --hard origin/main
-    git clean -fd
+if [[ "${current_branch}" == "main" ]]; then
+	git reset --hard origin/main
+	git clean -fd
 fi

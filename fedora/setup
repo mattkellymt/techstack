@@ -1,11 +1,13 @@
 #!/bin/bash
 set -eo pipefail
 
-script_dir="$HOME/github.com/mattkellymt/techstack/fedora"
+script_dir="${HOME}/github.com/mattkellymt/techstack/fedora"
+distribution="fedora"
+release="44"
 bridge_name="bridge-0"
-image_name="fedora"
-os_root="/var/lib/machines/${image_name}"
-os_ver="44"
+image_name="${distribution}-${release}"
+machine_dir="/var/lib/machines"
+os_root="${machine_dir}/${image_name}"
 
 bridge_netdev=$(cat << EOF
 [NetDev]
@@ -35,14 +37,47 @@ Bridge=${bridge_name}
 EOF
 )
 
+mkosi_config=$(cat << EOF
+[Distribution]
+Distribution=${distribution}
+Release=${release}
+
+[Output]
+Format=directory
+OutputDirectory=${machine_dir}
+Output=${image_name}
+
+[Content]
+Packages=
+	fedora-release
+	sudo
+	bash
+	dnf
+	systemd
+	systemd-networkd
+	systemd-resolved
+	mkosi
+WithRecommends=yes
+RootPassword=hashed:
+MachineId=random
+Bootable=no
+EOF
+)
+
+# materialize config files
+install -m 644 /dev/stdin "${script_dir}/${bridge_name}.netdev" <<< "${bridge_netdev}"
+install -m 644 /dev/stdin "${script_dir}/${bridge_name}.network" <<< "${bridge_network}"
+install -m 644 /dev/stdin "${script_dir}/${image_name}.nspawn" <<< "${image_nspawn}"
+install -m 644 /dev/stdin "${script_dir}/${image_name}.mkosi.conf" <<< "${mkosi_config}"
+
 # dnf
 sudo dnf upgrade -y --refresh
-sudo dnf install -y systemd systemd-container systemd-resolved
+sudo dnf install -y systemd systemd-container systemd-resolved mkosi
 
 # write + install the container bridge config (10.0.0.1/24, DHCP server + NAT)
-sudo install -m 644 /dev/stdin /etc/systemd/network/${bridge_name}.netdev  <<< "$bridge_netdev"
-sudo install -m 644 /dev/stdin /etc/systemd/network/${bridge_name}.network <<< "$bridge_network"
-sudo install -m 644 /dev/stdin /etc/systemd/nspawn/${image_name}.nspawn <<< "$image_nspawn"
+sudo install -m 644 "${script_dir}/${bridge_name}.netdev" "/etc/systemd/network/${bridge_name}.netdev"
+sudo install -m 644 "${script_dir}/${bridge_name}.network" "/etc/systemd/network/${bridge_name}.network"
+sudo install -m 644 "${script_dir}/${image_name}.nspawn" "/etc/systemd/nspawn/${image_name}.nspawn"
 
 # ensure container networking + DNS are enabled and running (idempotent)
 sudo systemctl enable --now systemd-networkd
@@ -51,16 +86,10 @@ sudo networkctl reload
 
 # remove the existing container
 sudo systemctl stop "systemd-nspawn@${image_name}.service"
-sudo machinectl remove "$image_name" 2>/dev/null || true
+sudo machinectl remove "${image_name}" 2>/dev/null || true
 
-# create a fedora container
-sudo dnf -y \
-	--installroot="$os_root" \
-	--releasever="$os_ver" \
-	--use-host-config \
-	install fedora-release sudo bash dnf \
-	systemd systemd-networkd systemd-resolved
+# create a container
+sudo mkosi --directory "${script_dir}" --include "${script_dir}/${image_name}.mkosi.conf" --force build
 
-sudo systemd-firstboot --root="$os_root" --delete-root-password --force
-sudo systemctl --root "$os_root" enable systemd-networkd systemd-resolved
+sudo systemctl --root "${os_root}" enable systemd-networkd systemd-resolved
 sudo systemctl start "systemd-nspawn@${image_name}.service"

@@ -1,7 +1,9 @@
 #!/bin/bash
-set -eo pipefail 
+set -eo pipefail
 
-script_dir="$HOME/github.com/mattkellymt/techstack/ubuntu"
+github_dir="${HOME}/github.com/mattkellymt"
+repo_dir="${github_dir}/techstack"
+script_dir="${repo_dir}/ubuntu"
 
 # apt
 sudo apt update -y
@@ -11,29 +13,30 @@ sudo apt install -y \
 	vim git curl htop pass \
 	bubblewrap gawk zstd cmake build-essential
 
-# brew
-$script_dir/install_brew
-brew install -y jq yq uv
-
-# agents
-$script_dir/install_agents
-
 # github
-mkdir -p "$HOME/github.com/mattkellymt"
-cd "$HOME/github.com/mattkellymt"
+mkdir -p "${github_dir}"
 
-if [ ! -d techstack ]; then
+if [[ ! -d "${repo_dir}" ]]; then
+	cd "${github_dir}"
 	git clone https://github.com/mattkellymt/techstack.git
 fi
 
-cd "$HOME/github.com/mattkellymt/techstack/fedora"
+cd "${repo_dir}"
 git fetch origin main
 current_branch=$(git branch --show-current)
 
-if [ "$current_branch" = "main" ]; then
+if [[ "${current_branch}" == "main" ]]; then
 	git reset --hard origin/main
 	git clean -fd
 fi
 
-mkdir -p "$HOME/.local/bin"
-ln -sf "$HOME/github.com/mattkellymt/techstack/fedora/stack" "$HOME/.local/bin/stack"
+# brew
+"${script_dir}/install_brew"
+brew install jq yq uv
+
+# agents
+"${script_dir}/install_agents"
+
+# CLI
+mkdir -p "${HOME}/.local/bin"
+ln -sf "${script_dir}/stack" "${HOME}/.local/bin/stack"
