@@ -1,9 +1,9 @@
 #!/bin/bash
 set -eo pipefail
 
+GH_TOKEN=$1
 GIT_USER=${USER}
 GIT_EMAIL=""
-GH_TOKEN=$1
 
 sudo dnf -y upgrade
 sudo dnf -y install git gh
