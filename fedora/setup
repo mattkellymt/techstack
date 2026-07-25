@@ -39,11 +39,6 @@ Bridge=${bridge_name}
 EOF
 )
 
-agent_sudoers=$(cat << EOF
-${agent_user} ALL=(ALL) NOPASSWD: ALL
-EOF
-)
-
 mkosi_config=$(cat << EOF
 [Distribution]
 Distribution=${distribution}
