@@ -52,13 +52,16 @@ Output=${image_name}
 [Content]
 Packages=
 	fedora-release
-	sudo
+	systemd
+	systemd-container
+	systemd-networkd
+	mkosi
 	bash
 	dnf
-	systemd
-	systemd-networkd
-	systemd-resolved
-	mkosi
+	sudo
+	git
+	development-tools
+	bubblewrap
 WithRecommends=yes
 RootPassword=hashed:
 MachineId=random
@@ -67,7 +70,7 @@ EOF
 )
 
 # materialize config files
-for ext in {netdev,network,conf,nspawn,sudoers}; do
+for ext in {netdev,network,conf,nspawn}; do
 	rm -f "${script_dir}"/*."${ext}"
 done
 
@@ -79,9 +82,13 @@ install -m 644 /dev/stdin "${script_dir}/${image_name}.mkosi.conf" <<< "${mkosi_
 
 # dnf
 sudo dnf upgrade -y --refresh
-sudo dnf install -y systemd systemd-container mkosi
+sudo dnf install -y \
+	systemd systemd-container systemd-networkd mkosi \
+	bash dnf sudo \
+	git development-tools bubblewrap
 
 # install the container bridge config
+sudo rm -f /etc/systemd/network/*
 sudo install -m 644 "${script_dir}/${bridge_name}.netdev" "/etc/systemd/network/${bridge_name}.netdev"
 sudo install -m 644 "${script_dir}/${bridge_name}.network" "/etc/systemd/network/${bridge_name}.network"
 sudo systemctl enable --now systemd-networkd
@@ -93,10 +100,11 @@ sudo machinectl remove "${image_name}" 2>/dev/null || true
 
 # create a container
 sudo mkosi --directory "${script_dir}" --include "${script_dir}/${image_name}.mkosi.conf" --force build
+sudo systemctl --root "${os_root}" enable systemd-networkd
 sudo useradd --root "${os_root}" --create-home --user-group --groups wheel "${agent_user}"
 sudo passwd --root "${os_root}" --delete "${agent_user}"
-sudo systemctl --root "${os_root}" enable systemd-networkd systemd-resolved
 
 # start the container
+sudo rm -f /etc/systemd/nspawn/*
 sudo install -m 644 "${script_dir}/${image_name}.nspawn" "/etc/systemd/nspawn/${image_name}.nspawn"
 sudo systemctl start "systemd-nspawn@${image_name}.service"
