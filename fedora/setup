@@ -50,7 +50,7 @@ sudo systemctl enable --now systemd-resolved
 sudo networkctl reload
 
 # create a fedora container
-if [ ! -d "$os_root" ] then;
+if [ ! -d "$os_root" ]; then
 	sudo dnf -y \
 		--installroot="$os_root" \
 		--releasever="$os_ver" \
@@ -61,4 +61,4 @@ if [ ! -d "$os_root" ] then;
 	sudo systemd-firstboot --root="$os_root" --delete-root-password --force
 	sudo systemctl --root "$os_root" enable systemd-networkd systemd-resolved
 	sudo machinectl start "$image_name"
-fi;
+fi
