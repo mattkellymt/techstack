@@ -75,6 +75,7 @@ sudo dnf -y upgrade
 sudo dnf -y install systemd systemd-networkd systemd-container mkosi
 
 # config files
+sudo mkdir -p "${script_dir}"/config
 rm -f "${script_dir}"/config/*
 install -m 644 /dev/stdin "${script_dir}/config/${bridge_name}.netdev" <<< "${bridge_netdev}"
 install -m 644 /dev/stdin "${script_dir}/config/${bridge_name}.network" <<< "${bridge_network}"
