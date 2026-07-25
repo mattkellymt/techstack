@@ -108,4 +108,5 @@ sudo install -d -m 755 /etc/systemd/nspawn
 sudo rm -f /etc/systemd/nspawn/*
 sudo install -m 644 "${script_dir}/${image_name}.nspawn" "/etc/systemd/nspawn/${image_name}.nspawn"
 sudo systemctl start "systemd-nspawn@${image_name}.service"
+sudo machinectl shell ${agent_user}@${image_name} /bin/bash -lc "sudo dnf -y upgrade"
 
