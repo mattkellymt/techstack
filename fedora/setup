@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eo pipefail
 
-script_dir="${HOME}/github.com/mattkellymt/techstack/fedora"
+script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
 distribution="fedora"
 release="44"
 bridge_name="bridge-0"
