@@ -100,7 +100,7 @@ sudo machinectl remove "${image_name}" 2>/dev/null || true
 
 # create a container
 sudo mkosi --directory "${script_dir}" --include "${script_dir}/${image_name}.mkosi.conf" --force build
-sudo useradd --root "${os_root}" --create-home --user-group --groups wheel "${agent_user}"
+sudo useradd --root "${os_root}" --create-home --user-group "${agent_user}"
 sudo passwd --root "${os_root}" --delete "${agent_user}"
 sudo install -m 440 "${script_dir}/${agent_user}.sudoers" "${os_root}/etc/sudoers.d/${agent_user}"
 sudo install -m 644 "${script_dir}/${image_name}.nspawn" "/etc/systemd/nspawn/${image_name}.nspawn"
