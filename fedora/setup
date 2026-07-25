@@ -65,6 +65,7 @@ EOF
 )
 
 # materialize config files
+rm -f "${script_dir}"/*.netdev "${script_dir}"/*.network "${script_dir}"/*.conf "${script_dir}"/*.nspawn
 install -m 644 /dev/stdin "${script_dir}/${bridge_name}.netdev" <<< "${bridge_netdev}"
 install -m 644 /dev/stdin "${script_dir}/${bridge_name}.network" <<< "${bridge_network}"
 install -m 644 /dev/stdin "${script_dir}/${image_name}.nspawn" <<< "${image_nspawn}"
