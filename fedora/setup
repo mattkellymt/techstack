@@ -2,7 +2,6 @@
 set -eo pipefail
 
 script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
-config_dir="${script_dir}/config"
 distribution="fedora"
 release="44"
 bridge_name="bridge-0"
@@ -12,14 +11,21 @@ machine_dir="/var/lib/machines"
 os_root="${machine_dir}/${image_name}"
 agent_user="agent"
 
-bridge_netdev=$(cat << EOF
+# dnf
+sudo dnf -y upgrade
+sudo dnf -y install systemd systemd-networkd systemd-container mkosi
+
+# install the bridge
+sudo mkdir -p /etc/systemd/network
+sudo rm -f /etc/systemd/network/*
+
+sudo install -m 644 /dev/stdin "/etc/systemd/network/${bridge_name}.netdev" << EOF
 [NetDev]
 Name=${bridge_name}
 Kind=bridge
 EOF
-)
 
-bridge_network=$(cat << EOF
+sudo install -m 644 /dev/stdin "/etc/systemd/network/${bridge_name}.network" << EOF
 [Match]
 Name=${bridge_name}
 
@@ -29,23 +35,15 @@ DHCPServer=yes
 IPMasquerade=ipv4
 ConfigureWithoutCarrier=yes
 EOF
-)
 
-image_nspawn=$(cat << EOF
-[Exec]
-NotifyReady=yes
+sudo systemctl enable --now systemd-networkd
+sudo networkctl reload
 
-[Network]
-Bridge=${bridge_name}
-EOF
-)
+# create the container
+sudo systemctl stop "systemd-nspawn@${image_name}.service"
+sudo machinectl remove "${image_name}" 2>/dev/null || true
 
-agent_sudoers=$(cat << EOF
-${agent_user} ALL=(ALL) NOPASSWD: ALL
-EOF
-)
-
-mkosi_config=$(cat << EOF
+install -m 644 /dev/stdin "${script_dir}/mkosi.conf" << EOF
 [Distribution]
 Distribution=${distribution}
 Release=${release}
@@ -69,39 +67,23 @@ RootPassword=hashed:
 MachineId=random
 Bootable=no
 EOF
-)
 
-# dnf
-sudo dnf -y upgrade
-sudo dnf -y install systemd systemd-networkd systemd-container mkosi
-
-# create the config files
-sudo mkdir -p "${config_dir}"
-rm -f "${config_dir}"/*
-install -m 644 /dev/stdin "${config_dir}/${bridge_name}.netdev" <<< "${bridge_netdev}"
-install -m 644 /dev/stdin "${config_dir}/${bridge_name}.network" <<< "${bridge_network}"
-install -m 644 /dev/stdin "${config_dir}/${image_name}.nspawn" <<< "${image_nspawn}"
-install -m 440 /dev/stdin "${config_dir}/${agent_user}.sudoers" <<< "${agent_sudoers}"
-install -m 644 /dev/stdin "${config_dir}/${image_name}.mkosi.conf" <<< "${mkosi_config}"
-
-# install the bridge 
-sudo mkdir -p /etc/systemd/network
-sudo rm -f /etc/systemd/network/*
-sudo install -m 644 "${config_dir}/${bridge_name}.netdev" "/etc/systemd/network/${bridge_name}.netdev"
-sudo install -m 644 "${config_dir}/${bridge_name}.network" "/etc/systemd/network/${bridge_name}.network"
-sudo systemctl enable --now systemd-networkd
-sudo networkctl reload
-
-# create the container
-sudo systemctl stop "systemd-nspawn@${image_name}.service"
-sudo machinectl remove "${image_name}" 2>/dev/null || true
-sudo mkosi --directory "${script_dir}" --include "${config_dir}/${image_name}.mkosi.conf" --force build
+sudo mkosi --directory "${script_dir}" --force build
+sudo systemctl --root "${os_root}" enable systemd-networkd
 sudo useradd --root "${os_root}" --create-home --user-group --groups wheel "${agent_user}"
 sudo passwd --root "${os_root}" --delete "${agent_user}"
-sudo install -m 440 "${config_dir}/${agent_user}.sudoers" "${os_root}/etc/sudoers.d/${agent_user}"
-sudo mkdir -p /etc/systemd/nspawn
-sudo rm -f /etc/systemd/nspawn/*
-sudo install -m 644 "${config_dir}/${image_name}.nspawn" "/etc/systemd/nspawn/${image_name}.nspawn"
-sudo systemctl --root "${os_root}" enable systemd-networkd
+
+sudo install -m 440 /dev/stdin "${os_root}/etc/sudoers.d/${agent_user}" << EOF
+${agent_user} ALL=(ALL) NOPASSWD: ALL
+EOF
+
+sudo install -m 644 /dev/stdin "/etc/systemd/nspawn/${image_name}.nspawn" << EOF
+[Exec]
+NotifyReady=yes
+
+[Network]
+Bridge=${bridge_name}
+EOF
+
 sudo systemctl start "systemd-nspawn@${image_name}.service"
 sudo machinectl shell "${agent_user}"@"${image_name}" /bin/bash -lc "sudo dnf -y upgrade"
