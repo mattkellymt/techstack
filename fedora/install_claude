@@ -1,5 +1,5 @@
 #!/bin/bash
 set -eo pipefail
 
-sudo dnf -y install curl tar awk bubblewrap
+sudo dnf install curl
 curl -fsSL https://claude.ai/install.sh | bash
