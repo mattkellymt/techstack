@@ -85,5 +85,6 @@ NotifyReady=yes
 Bridge=${bridge_name}
 EOF
 
+# start the container
 sudo systemctl start "systemd-nspawn@${image_name}.service"
 sudo machinectl shell "${agent_user}"@"${image_name}" /bin/bash -lc "sudo dnf -y upgrade"
