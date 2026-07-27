@@ -4,8 +4,8 @@ set -eo pipefail
 script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
 image_name="sandbox"
 image_root="/var/lib/machines/${image_name}"
-rootfs="${script_dir}/rootfs"
-host_config="${script_dir}/host"
+machine_root="${script_dir}/machine"
+host_root="${script_dir}/host"
 
 packages=(
 	bash
@@ -21,7 +21,7 @@ packages=(
 
 sudo systemctl stop "systemd-nspawn@${image_name}.service"
 sudo machinectl remove "${image_name}" 2>/dev/null || true
-sudo cp -R "${rootfs}" "${image_root}"
+sudo cp -R "${machine_root}" "${image_root}"
 
 sudo dnf -y \
 	--installroot="${image_root}" \
@@ -38,10 +38,10 @@ sudo chroot "${image_root}" passwd --delete agent
 sudo systemctl --root="${image_root}" preset-all
 sudo systemd-machine-id-setup --root="${image_root}"
 
-# machinectl only honors privileged nspawn settings such as Zone= from
+# machinectl only honors privileged nspawn settings such as Bridge= from
 # the trusted host configuration directories.
 sudo install -D -m 644 \
-	"${host_config}/sandbox.nspawn" \
+	"${host_root}/etc/systemd/nspawn/${image_name}.nspawn" \
 	"/etc/systemd/nspawn/${image_name}.nspawn"
 
 sudo machinectl enable "${image_name}"

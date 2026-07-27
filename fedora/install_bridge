@@ -3,6 +3,6 @@ set -eo pipefail
 
 script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
 
-sudo cp -R "${script_dir}/host/network/." /etc/systemd/network/
+sudo cp -R "${script_dir}/host/etc/systemd/network/." /etc/systemd/network/
 sudo systemctl enable --now systemd-networkd
 sudo networkctl reload
