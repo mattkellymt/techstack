@@ -56,5 +56,4 @@ sudo install -D -m 644 \
 	"${host_root}/etc/systemd/nspawn/${image_name}.nspawn" \
 	"/etc/systemd/nspawn/${image_name}.nspawn"
 
-sudo machinectl enable "${image_name}"
-sudo machinectl start "${image_name}"
+sudo systemctl enable --now "systemd-nspawn@${image_name}.service"
