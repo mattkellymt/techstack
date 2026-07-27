@@ -4,6 +4,7 @@ set -eo pipefail
 script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
 image_name="sandbox"
 image_root="/var/lib/machines/${image_name}"
+config_root="${script_dir}/config"
 
 packages=(
 	bash
@@ -29,10 +30,10 @@ sudo dnf -y \
 	install "${packages[@]}"
 
 sudo install -D -m 440 \
-	"${script_dir}/rootfs/etc/sudoers.d/agent" \
+	"${config_root}/etc/sudoers.d/agent" \
 	"${image_root}/etc/sudoers.d/agent"
 sudo install -D -m 644 \
-	"${script_dir}/rootfs/usr/lib/systemd/system-preset/10-sandbox.preset" \
+	"${config_root}/usr/lib/systemd/system-preset/10-sandbox.preset" \
 	"${image_root}/usr/lib/systemd/system-preset/10-sandbox.preset"
 
 sudo chroot "${image_root}" \
