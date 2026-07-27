@@ -4,8 +4,7 @@ set -eo pipefail
 script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
 image_name="sandbox"
 image_root="/var/lib/machines/${image_name}"
-build_name="${image_name}.build"
-build_root=$(sudo mktemp -d --tmpdir=/dev/shm "${build_name}.XXXXXXXX")
+build_root=$(sudo mktemp -d --tmpdir=/dev/shm "${image_name}.XXXXXXXX")
 oci_root="${build_root}/image"
 bundle_root="${build_root}/bundle"
 bundle_rootfs="${bundle_root}/rootfs"
