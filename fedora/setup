@@ -2,8 +2,6 @@
 set -eo pipefail
 
 script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
-image_name="sandbox"
-user="agent"
 
 # dnf
 sudo dnf -y upgrade
@@ -12,14 +10,5 @@ sudo dnf -y install systemd systemd-networkd systemd-container mkosi
 # bridge
 "${script_dir}/install_bridge"
 
-# build the container
-sudo systemctl stop "systemd-nspawn@${image_name}.service"
-sudo machinectl remove "${image_name}" 2>/dev/null || true
-sudo mkosi --directory "${script_dir}/mkosi" --force build
-
-# machinectl remove deletes the settings file, so install it after
-sudo install -D -m 644 -t /etc/systemd/nspawn/ "${script_dir}/host/${image_name}.nspawn"
-
-# start the container
-sudo systemctl start "systemd-nspawn@${image_name}.service"
-sudo machinectl shell "${user}"@"${image_name}" /bin/bash -lc "sudo dnf -y upgrade"
+# container
+"${script_dir}/build_image"
