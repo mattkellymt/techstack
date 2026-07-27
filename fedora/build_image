@@ -4,6 +4,8 @@ set -eo pipefail
 script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
 image_name="sandbox"
 image_root="/var/lib/machines/${image_name}"
+build_name="${image_name}.build"
+build_root="/var/lib/machines/${build_name}"
 machine_root="${script_dir}/machine"
 host_root="${script_dir}/host"
 
@@ -19,24 +21,27 @@ packages=(
 	util-linux
 )
 
-sudo systemctl stop "systemd-nspawn@${image_name}.service"
-sudo machinectl remove "${image_name}" 2>/dev/null || true
-sudo cp -R "${machine_root}" "${image_root}"
+sudo machinectl remove "${build_name}" 2>/dev/null || true
+sudo cp -R "${machine_root}" "${build_root}"
 
 sudo dnf -y \
-	--installroot="${image_root}" \
+	--installroot="${build_root}" \
 	--releasever=44 \
 	--use-host-config \
 	--setopt=install_weak_deps=True \
 	install "${packages[@]}"
 
-sudo chmod 440 "${image_root}/etc/sudoers.d/agent"
-sudo chroot "${image_root}" \
+sudo chmod 440 "${build_root}/etc/sudoers.d/agent"
+sudo chroot "${build_root}" \
 	useradd --create-home --user-group --groups wheel agent
-sudo chroot "${image_root}" passwd --delete agent
+sudo chroot "${build_root}" passwd --delete agent
 
-sudo systemctl --root="${image_root}" preset-all
-sudo systemd-machine-id-setup --root="${image_root}"
+sudo systemctl --root="${build_root}" preset-all
+sudo systemd-machine-id-setup --root="${build_root}"
+
+sudo systemctl stop "systemd-nspawn@${image_name}.service"
+sudo machinectl remove "${image_name}" 2>/dev/null || true
+sudo mv "${build_root}" "${image_root}"
 
 # machinectl only honors privileged nspawn settings such as Bridge= from
 # the trusted host configuration directories.
