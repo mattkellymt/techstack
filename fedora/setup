@@ -7,8 +7,8 @@ script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
 sudo dnf -y upgrade
 sudo dnf -y install systemd systemd-networkd systemd-container mkosi
 
-# bridge
-"${script_dir}/install_bridge"
+# mkosi's nspawn networking relies on systemd-networkd on the host.
+sudo systemctl enable --now systemd-networkd
 
-# container
+# image
 "${script_dir}/build_image"
