@@ -5,6 +5,7 @@ script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
 image_name="sandbox"
 image_root="/var/lib/machines/${image_name}"
 rootfs="${script_dir}/rootfs"
+host_config="${script_dir}/host"
 
 packages=(
 	bash
@@ -40,7 +41,7 @@ sudo systemd-machine-id-setup --root="${image_root}"
 # machinectl only honors privileged nspawn settings such as Zone= from
 # the trusted host configuration directories.
 sudo install -D -m 644 \
-	"${script_dir}/sandbox.nspawn" \
+	"${host_config}/sandbox.nspawn" \
 	"/etc/systemd/nspawn/${image_name}.nspawn"
 
 sudo machinectl enable "${image_name}"
