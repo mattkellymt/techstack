@@ -11,9 +11,12 @@ export machine_dir="/var/lib/machines"
 export user="agent"
 os_root="${machine_dir}/${image_name}"
 
+config_dir=$(mktemp -d)
+trap 'rm -rf "${config_dir}"' EXIT
+
 render() {
-	envsubst '${distribution} ${release} ${bridge_name} ${bridge_address} ${image_name} ${machine_dir} ${user}' \
-		< "${script_dir}/templates/${1}"
+	envsubst < "${script_dir}/templates/${1}" > "${config_dir}/${1}"
+	echo "${config_dir}/${1}"
 }
 
 # dnf
@@ -23,29 +26,20 @@ sudo dnf -y install systemd systemd-networkd systemd-container mkosi gettext-env
 # install the bridge
 sudo mkdir -p /etc/systemd/network
 sudo rm -f /etc/systemd/network/*
-
-render bridge.netdev | sudo install -m 644 /dev/stdin "/etc/systemd/network/${bridge_name}.netdev"
-render bridge.network | sudo install -m 644 /dev/stdin "/etc/systemd/network/${bridge_name}.network"
-
+sudo install -m 644 "$(render bridge.netdev)" "/etc/systemd/network/${bridge_name}.netdev"
+sudo install -m 644 "$(render bridge.network)" "/etc/systemd/network/${bridge_name}.network"
 sudo systemctl enable --now systemd-networkd
 sudo networkctl reload
 
 # create the container
 sudo systemctl stop "systemd-nspawn@${image_name}.service"
 sudo machinectl remove "${image_name}" 2>/dev/null || true
-
-mkosi_conf=$(mktemp)
-trap 'rm -f "${mkosi_conf}"' EXIT
-render mkosi.conf > "${mkosi_conf}"
-chmod 644 "${mkosi_conf}"
-
-sudo mkosi --directory "${script_dir}" --include "${mkosi_conf}" --force build
+sudo mkosi --include "$(render mkosi.conf)" --force build
 sudo systemctl --root "${os_root}" enable systemd-networkd
 sudo useradd --root "${os_root}" --create-home --user-group --groups wheel "${user}"
 sudo passwd --root "${os_root}" --delete "${user}"
-
-render sudoers | sudo install -m 440 /dev/stdin "${os_root}/etc/sudoers.d/${user}"
-render machine.nspawn | sudo install -D -m 644 /dev/stdin "/etc/systemd/nspawn/${image_name}.nspawn"
+sudo install -m 440 "$(render sudoers)" "${os_root}/etc/sudoers.d/${user}"
+sudo install -D -m 644 "$(render machine.nspawn)" "/etc/systemd/nspawn/${image_name}.nspawn"
 
 # start the container
 sudo systemctl start "systemd-nspawn@${image_name}.service"
