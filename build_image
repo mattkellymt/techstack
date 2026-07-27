@@ -10,12 +10,6 @@ build_cleanup() {
 	sudo rm -rf -- "${build_root}"
 }
 
-image_cleanup() {
-	sudo systemctl stop "systemd-nspawn@${image_name}.service" \
-		2>/dev/null || true
-	sudo machinectl remove "${image_name}" 2>/dev/null || true
-}
-
 trap build_cleanup EXIT
 
 packages=(
@@ -49,9 +43,7 @@ sudo chroot "${image_root}" passwd --delete agent
 
 sudo systemctl stop "systemd-nspawn@${image_name}.service" 2>/dev/null || true
 sudo machinectl remove "${image_name}" 2>/dev/null || true
-trap image_cleanup ERR INT TERM
 
 sudo cp -R "${script_dir}/host/." /
 sudo mv "${image_root}" "/var/lib/machines/${image_name}"
 sudo systemctl enable --now "systemd-nspawn@${image_name}.service"
-trap - ERR INT TERM
