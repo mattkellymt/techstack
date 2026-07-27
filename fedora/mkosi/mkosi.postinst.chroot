@@ -1,6 +1,0 @@
-#!/bin/bash
-set -eo pipefail
-
-useradd --create-home --user-group --groups wheel agent
-passwd --delete agent
-chmod 440 /etc/sudoers.d/agent

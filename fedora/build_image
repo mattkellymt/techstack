@@ -29,10 +29,10 @@ sudo dnf -y \
 	install "${packages[@]}"
 
 sudo install -D -m 440 \
-	"${script_dir}/mkosi/mkosi.extra/etc/sudoers.d/agent" \
+	"${script_dir}/rootfs/etc/sudoers.d/agent" \
 	"${image_root}/etc/sudoers.d/agent"
 sudo install -D -m 644 \
-	"${script_dir}/mkosi/mkosi.extra/usr/lib/systemd/system-preset/10-sandbox.preset" \
+	"${script_dir}/rootfs/usr/lib/systemd/system-preset/10-sandbox.preset" \
 	"${image_root}/usr/lib/systemd/system-preset/10-sandbox.preset"
 
 sudo chroot "${image_root}" \
@@ -45,7 +45,7 @@ sudo systemd-machine-id-setup --root="${image_root}"
 # machinectl only honors privileged nspawn settings such as Zone= from
 # the trusted host configuration directories.
 sudo install -D -m 644 \
-	"${script_dir}/mkosi/mkosi.nspawn" \
+	"${script_dir}/sandbox.nspawn" \
 	"/etc/systemd/nspawn/${image_name}.nspawn"
 
 sudo machinectl enable "${image_name}"
