@@ -48,7 +48,7 @@ sudo chroot "${bundle_rootfs}" systemd-machine-id-setup
 
 sudo systemctl stop "systemd-nspawn@${image_name}.service" 2>/dev/null || true
 sudo machinectl remove "${image_name}" 2>/dev/null || true
-sudo importctl import-fs "${bundle_rootfs}" "${image_name}"
+sudo importctl --class=machine import-fs "${bundle_rootfs}" "${image_name}"
 
 # machinectl only honors privileged nspawn settings such as Bridge= from
 # the trusted host configuration directories.
