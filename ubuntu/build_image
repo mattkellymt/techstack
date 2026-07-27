@@ -1,0 +1,57 @@
+#!/bin/bash
+set -eo pipefail
+
+script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
+image_name="sandbox"
+image_root="/var/lib/machines/${image_name}"
+build_name="${image_name}.build"
+build_root="/var/lib/machines/${build_name}"
+machine_root="${script_dir}/machine"
+host_root="${script_dir}/host"
+
+packages=(
+	apt
+	bash
+	coreutils
+	dbus
+	iproute2
+	passwd
+	sudo
+	systemd
+	systemd-resolved
+	util-linux
+)
+
+sudo machinectl remove "${build_name}" 2>/dev/null || true
+sudo cp -R "${machine_root}" "${build_root}"
+
+sudo debootstrap \
+	--variant=minbase \
+	resolute \
+	"${build_root}" \
+	http://archive.ubuntu.com/ubuntu
+
+sudo chroot "${build_root}" apt-get update
+sudo chroot "${build_root}" env DEBIAN_FRONTEND=noninteractive \
+	apt-get -y install "${packages[@]}"
+
+sudo chmod 440 "${build_root}/etc/sudoers.d/agent"
+sudo chroot "${build_root}" \
+	useradd --create-home --user-group --groups sudo agent
+sudo chroot "${build_root}" passwd --delete agent
+
+sudo systemctl --root="${build_root}" preset-all
+sudo systemd-machine-id-setup --root="${build_root}"
+
+sudo systemctl stop "systemd-nspawn@${image_name}.service"
+sudo machinectl remove "${image_name}" 2>/dev/null || true
+sudo mv "${build_root}" "${image_root}"
+
+# machinectl only honors privileged nspawn settings such as Bridge= from
+# the trusted host configuration directories.
+sudo install -D -m 644 \
+	"${host_root}/etc/systemd/nspawn/${image_name}.nspawn" \
+	"/etc/systemd/nspawn/${image_name}.nspawn"
+
+sudo machinectl enable "${image_name}"
+sudo machinectl start "${image_name}"
