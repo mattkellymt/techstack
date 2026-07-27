@@ -41,9 +41,9 @@ sudo chroot "${image_root}" systemd-machine-id-setup
 sudo chroot "${image_root}" useradd --create-home --user-group --groups wheel agent
 sudo chroot "${image_root}" passwd --delete agent
 
-sudo systemctl stop "systemd-nspawn@${image_name}.service" 2>/dev/null || true
-sudo machinectl remove "${image_name}" 2>/dev/null || true
+sudo machinectl stop "${image_name}" &> /dev/null
+sudo machinectl remove "${image_name}" &> /dev/null
 
 sudo cp -R "${script_dir}/host/etc/." /etc/
 sudo mv "${image_root}" "/var/lib/machines/${image_name}"
-sudo systemctl enable --now "systemd-nspawn@${image_name}.service"
+sudo machinectl start "${image_name}"
