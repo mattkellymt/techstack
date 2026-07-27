@@ -36,23 +36,20 @@ sudo umoci unpack \
 
 sudo cp -R "${machine_root}/." "${bundle_rootfs}/"
 sudo chroot "${bundle_rootfs}" dnf -y install "${packages[@]}"
+sudo chroot "${bundle_rootfs}" systemctl enable systemd-networkd.service
+
+sudo chroot "${bundle_rootfs}" rm -f /etc/machine-id
+sudo chroot "${bundle_rootfs}" systemd-machine-id-setup
 
 sudo chroot "${bundle_rootfs}" chmod 440 /etc/sudoers.d/agent
 sudo chroot "${bundle_rootfs}" useradd --create-home --user-group --groups wheel agent
 sudo chroot "${bundle_rootfs}" passwd --delete agent
 
-sudo chroot "${bundle_rootfs}" systemctl enable systemd-networkd.service
-sudo chroot "${bundle_rootfs}" rm -f /etc/machine-id
-sudo chroot "${bundle_rootfs}" systemd-machine-id-setup
-
 sudo systemctl stop "systemd-nspawn@${image_name}.service" 2>/dev/null || true
 sudo machinectl remove "${image_name}" 2>/dev/null || true
-sudo importctl --class=machine import-fs "${bundle_rootfs}" "${image_name}"
 
-# machinectl only honors privileged nspawn settings such as Bridge= from
-# the trusted host configuration directories.
 sudo install -D -m 644 \
 	"${host_root}/etc/systemd/nspawn/${image_name}.nspawn" \
 	"/etc/systemd/nspawn/${image_name}.nspawn"
-
+sudo importctl --class=machine import-fs "${bundle_rootfs}" "${image_name}"
 sudo systemctl enable --now "systemd-nspawn@${image_name}.service"
