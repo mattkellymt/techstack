@@ -43,9 +43,9 @@ sudo chroot "${bundle_rootfs}" \
 	useradd --create-home --user-group --groups wheel agent
 sudo chroot "${bundle_rootfs}" passwd --delete agent
 
-sudo systemctl --root="${bundle_rootfs}" preset-all
-sudo rm -f "${bundle_rootfs}/etc/machine-id"
-sudo systemd-machine-id-setup --root="${bundle_rootfs}"
+sudo chroot "${bundle_rootfs}" systemctl enable systemd-networkd.service
+sudo chroot "${bundle_rootfs}" rm -f /etc/machine-id
+sudo chroot "${bundle_rootfs}" systemd-machine-id-setup
 
 sudo systemctl stop "systemd-nspawn@${image_name}.service" 2>/dev/null || true
 sudo machinectl remove "${image_name}" 2>/dev/null || true
