@@ -2,22 +2,30 @@
 set -eo pipefail
 
 script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
-bridge_name="bridge-0"
-image_name="sandbox"
-machine_dir="/var/lib/machines"
+export distribution="fedora"
+export release="44"
+export bridge_name="bridge-0"
+export bridge_address="10.203.17.1/24"
+export image_name="sandbox"
+export machine_dir="/var/lib/machines"
+export agent_user="agent"
 os_root="${machine_dir}/${image_name}"
-agent_user="agent"
+
+render() {
+	envsubst '${distribution} ${release} ${bridge_name} ${bridge_address} ${image_name} ${machine_dir} ${agent_user}' \
+		< "${script_dir}/templates/${1}"
+}
 
 # dnf
 sudo dnf -y upgrade
-sudo dnf -y install systemd systemd-networkd systemd-container mkosi
+sudo dnf -y install systemd systemd-networkd systemd-container mkosi gettext-envsubst
 
 # install the bridge
 sudo mkdir -p /etc/systemd/network
 sudo rm -f /etc/systemd/network/*
 
-sudo install -m 644 "${script_dir}/${bridge_name}.netdev" "/etc/systemd/network/${bridge_name}.netdev"
-sudo install -m 644 "${script_dir}/${bridge_name}.network" "/etc/systemd/network/${bridge_name}.network"
+render bridge.netdev | sudo install -m 644 /dev/stdin "/etc/systemd/network/${bridge_name}.netdev"
+render bridge.network | sudo install -m 644 /dev/stdin "/etc/systemd/network/${bridge_name}.network"
 
 sudo systemctl enable --now systemd-networkd
 sudo networkctl reload
@@ -26,13 +34,18 @@ sudo networkctl reload
 sudo systemctl stop "systemd-nspawn@${image_name}.service"
 sudo machinectl remove "${image_name}" 2>/dev/null || true
 
-sudo mkosi --directory "${script_dir}" --force build
+mkosi_conf=$(mktemp)
+trap 'rm -f "${mkosi_conf}"' EXIT
+render mkosi.conf > "${mkosi_conf}"
+chmod 644 "${mkosi_conf}"
+
+sudo mkosi --directory "${script_dir}" --include "${mkosi_conf}" --force build
 sudo systemctl --root "${os_root}" enable systemd-networkd
 sudo useradd --root "${os_root}" --create-home --user-group --groups wheel "${agent_user}"
 sudo passwd --root "${os_root}" --delete "${agent_user}"
 
-sudo install -m 440 "${script_dir}/${agent_user}" "${os_root}/etc/sudoers.d/${agent_user}"
-sudo install -D -m 644 "${script_dir}/${image_name}.nspawn" "/etc/systemd/nspawn/${image_name}.nspawn"
+render sudoers | sudo install -m 440 /dev/stdin "${os_root}/etc/sudoers.d/${agent_user}"
+render machine.nspawn | sudo install -D -m 644 /dev/stdin "/etc/systemd/nspawn/${image_name}.nspawn"
 
 # start the container
 sudo systemctl start "systemd-nspawn@${image_name}.service"

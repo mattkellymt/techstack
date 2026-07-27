@@ -2,4 +2,4 @@
 NotifyReady=yes
 
 [Network]
-Bridge=bridge-0
+Bridge=${bridge_name}
