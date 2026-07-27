@@ -3,7 +3,6 @@ set -eo pipefail
 
 script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
 image_name="sandbox"
-image_root="/var/lib/machines/${image_name}"
 build_root=$(sudo mktemp -d --tmpdir=/dev/shm "${image_name}.XXXXXXXX")
 oci_root="${build_root}/image"
 bundle_root="${build_root}/bundle"
@@ -49,7 +48,7 @@ sudo chroot "${bundle_rootfs}" systemd-machine-id-setup
 
 sudo systemctl stop "systemd-nspawn@${image_name}.service" 2>/dev/null || true
 sudo machinectl remove "${image_name}" 2>/dev/null || true
-sudo mv "${bundle_rootfs}" "${image_root}"
+sudo importctl import-fs "${bundle_rootfs}" "${image_name}"
 
 # machinectl only honors privileged nspawn settings such as Bridge= from
 # the trusted host configuration directories.
