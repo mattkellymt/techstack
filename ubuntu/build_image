@@ -22,6 +22,11 @@ packages=(
 	util-linux
 )
 
+debootstrap_script=()
+if [[ ! -e /usr/share/debootstrap/scripts/resolute ]]; then
+	debootstrap_script+=(/usr/share/debootstrap/scripts/gutsy)
+fi
+
 sudo machinectl remove "${build_name}" 2>/dev/null || true
 sudo cp -R "${machine_root}" "${build_root}"
 
@@ -29,7 +34,8 @@ sudo debootstrap \
 	--variant=minbase \
 	resolute \
 	"${build_root}" \
-	http://archive.ubuntu.com/ubuntu
+	http://archive.ubuntu.com/ubuntu \
+	"${debootstrap_script[@]}"
 
 sudo chroot "${build_root}" apt-get update
 sudo chroot "${build_root}" env DEBIAN_FRONTEND=noninteractive \
