@@ -2,16 +2,13 @@
 set -eo pipefail
 
 script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
-host_config="${script_dir}/host"
 
 # dnf
 sudo dnf -y upgrade
 sudo dnf -y install systemd systemd-networkd systemd-container
 
 # bridge
-sudo cp -R "${host_config}/network/." /etc/systemd/network/
-sudo systemctl enable --now systemd-networkd
-sudo networkctl reload
+"${script_dir}/install_bridge"
 
 # image
 "${script_dir}/build_image"
