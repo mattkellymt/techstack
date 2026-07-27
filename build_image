@@ -37,7 +37,6 @@ sudo chroot "${image_root}" systemctl enable systemd-networkd.service
 sudo chroot "${image_root}" rm -f /etc/machine-id
 sudo chroot "${image_root}" systemd-machine-id-setup
 
-sudo chroot "${image_root}" chmod 440 /etc/sudoers.d/agent
 sudo chroot "${image_root}" useradd --create-home --user-group --groups wheel agent
 sudo chroot "${image_root}" passwd --delete agent
 
