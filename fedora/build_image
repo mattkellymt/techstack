@@ -38,8 +38,7 @@ sudo cp -R "${machine_root}/." "${bundle_rootfs}/"
 sudo chroot "${bundle_rootfs}" dnf -y install "${packages[@]}"
 
 sudo chroot "${bundle_rootfs}" chmod 440 /etc/sudoers.d/agent
-sudo chroot "${bundle_rootfs}" \
-	useradd --create-home --user-group --groups wheel agent
+sudo chroot "${bundle_rootfs}" useradd --create-home --user-group --groups wheel agent
 sudo chroot "${bundle_rootfs}" passwd --delete agent
 
 sudo chroot "${bundle_rootfs}" systemctl enable systemd-networkd.service
