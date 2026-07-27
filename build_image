@@ -6,10 +6,17 @@ image_name="sandbox"
 build_root=$(sudo mktemp -d --tmpdir=/dev/shm "${image_name}.XXXXXXXX")
 image_root="${build_root}/bundle/rootfs"
 
-cleanup() { 
-	sudo rm -rf -- "${build_root}" 
+build_cleanup() {
+	sudo rm -rf -- "${build_root}"
 }
-trap cleanup EXIT
+
+image_cleanup() {
+	sudo systemctl stop "systemd-nspawn@${image_name}.service" \
+		2>/dev/null || true
+	sudo machinectl remove "${image_name}" 2>/dev/null || true
+}
+
+trap build_cleanup EXIT
 
 packages=(
 	bash
@@ -42,7 +49,9 @@ sudo chroot "${image_root}" passwd --delete agent
 
 sudo systemctl stop "systemd-nspawn@${image_name}.service" 2>/dev/null || true
 sudo machinectl remove "${image_name}" 2>/dev/null || true
+trap image_cleanup ERR INT TERM
 
 sudo cp -R "${script_dir}/host/." /
 sudo mv "${image_root}" "/var/lib/machines/${image_name}"
 sudo systemctl enable --now "systemd-nspawn@${image_name}.service"
+trap - ERR INT TERM
