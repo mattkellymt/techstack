@@ -5,7 +5,12 @@ script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
 
 # dnf
 sudo dnf -y upgrade
-sudo dnf -y install systemd systemd-networkd systemd-container
+sudo dnf -y install \
+	skopeo \
+	systemd \
+	systemd-container \
+	systemd-networkd \
+	umoci
 
 # bridge
 "${script_dir}/install_bridge"

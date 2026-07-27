@@ -5,9 +5,17 @@ script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
 image_name="sandbox"
 image_root="/var/lib/machines/${image_name}"
 build_name="${image_name}.build"
-build_root="/var/lib/machines/${build_name}"
+build_root=$(sudo mktemp -d --tmpdir=/dev/shm "${build_name}.XXXXXXXX")
+oci_root="${build_root}/image"
+bundle_root="${build_root}/bundle"
+bundle_rootfs="${bundle_root}/rootfs"
 machine_root="${script_dir}/machine"
 host_root="${script_dir}/host"
+
+cleanup() {
+	sudo rm -rf -- "${build_root}"
+}
+trap cleanup EXIT
 
 packages=(
 	bash
@@ -21,26 +29,32 @@ packages=(
 	util-linux
 )
 
-sudo machinectl remove "${build_name}" 2>/dev/null || true
-sudo cp -R "${machine_root}" "${build_root}"
+sudo skopeo copy \
+	docker://registry.fedoraproject.org/fedora:44 \
+	"oci:${oci_root}:44"
+sudo umoci unpack \
+	--image "${oci_root}:44" \
+	"${bundle_root}"
 
-sudo dnf -y \
-	--installroot="${build_root}" \
-	--releasever=44 \
-	--use-host-config \
-	install "${packages[@]}"
+sudo cp -R "${machine_root}/." "${bundle_rootfs}/"
+sudo rm -f "${bundle_rootfs}/etc/resolv.conf"
+sudo cp --dereference /etc/resolv.conf "${bundle_rootfs}/etc/resolv.conf"
+sudo chroot "${bundle_rootfs}" dnf -y install "${packages[@]}"
+sudo ln -sfn ../run/systemd/resolve/stub-resolv.conf \
+	"${bundle_rootfs}/etc/resolv.conf"
 
-sudo chmod 440 "${build_root}/etc/sudoers.d/agent"
-sudo chroot "${build_root}" \
+sudo chmod 440 "${bundle_rootfs}/etc/sudoers.d/agent"
+sudo chroot "${bundle_rootfs}" \
 	useradd --create-home --user-group --groups wheel agent
-sudo chroot "${build_root}" passwd --delete agent
+sudo chroot "${bundle_rootfs}" passwd --delete agent
 
-sudo systemctl --root="${build_root}" preset-all
-sudo systemd-machine-id-setup --root="${build_root}"
+sudo systemctl --root="${bundle_rootfs}" preset-all
+sudo rm -f "${bundle_rootfs}/etc/machine-id"
+sudo systemd-machine-id-setup --root="${bundle_rootfs}"
 
-sudo systemctl stop "systemd-nspawn@${image_name}.service"
+sudo systemctl stop "systemd-nspawn@${image_name}.service" 2>/dev/null || true
 sudo machinectl remove "${image_name}" 2>/dev/null || true
-sudo mv "${build_root}" "${image_root}"
+sudo mv "${bundle_rootfs}" "${image_root}"
 
 # machinectl only honors privileged nspawn settings such as Bridge= from
 # the trusted host configuration directories.
