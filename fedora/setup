@@ -15,7 +15,7 @@ config_dir=$(mktemp -d)
 trap 'rm -rf "${config_dir}"' EXIT
 
 render() {
-	local config="${config_dir}/${2:-${1}}"
+	local config="${config_dir}/${1}"
 	envsubst < "${script_dir}/templates/${1}" > "${config}"
 	echo "${config}"
 }
