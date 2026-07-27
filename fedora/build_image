@@ -4,7 +4,7 @@ set -eo pipefail
 script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
 image_name="sandbox"
 image_root="/var/lib/machines/${image_name}"
-config_root="${script_dir}/config"
+rootfs="${script_dir}/rootfs"
 
 packages=(
 	bash
@@ -20,8 +20,7 @@ packages=(
 
 sudo systemctl stop "systemd-nspawn@${image_name}.service"
 sudo machinectl remove "${image_name}" 2>/dev/null || true
-sudo mkdir -p "${image_root}"
-sudo cp -R "${config_root}/." "${image_root}/"
+sudo cp -R "${rootfs}" "${image_root}"
 
 sudo dnf -y \
 	--installroot="${image_root}" \
