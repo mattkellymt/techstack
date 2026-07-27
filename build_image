@@ -44,8 +44,6 @@ sudo chroot "${image_root}" passwd --delete agent
 sudo systemctl stop "systemd-nspawn@${image_name}.service" 2>/dev/null || true
 sudo machinectl remove "${image_name}" 2>/dev/null || true
 
-sudo install -D -m 644 \
-	"${script_dir}/host/etc/systemd/nspawn/${image_name}.nspawn" \
-	"/etc/systemd/nspawn/${image_name}.nspawn"
+sudo cp -R "${script_dir}/host/." /
 sudo mv "${image_root}" "/var/lib/machines/${image_name}"
 sudo systemctl enable --now "systemd-nspawn@${image_name}.service"
