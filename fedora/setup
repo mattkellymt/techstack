@@ -24,8 +24,6 @@ sudo dnf -y upgrade
 sudo dnf -y install systemd systemd-networkd systemd-container mkosi gettext-envsubst
 
 # install the bridge
-sudo mkdir -p /etc/systemd/network
-sudo rm -f /etc/systemd/network/*
 sudo install -m 644 "$(render bridge.netdev)" "/etc/systemd/network/${bridge_name}.netdev"
 sudo install -m 644 "$(render bridge.network)" "/etc/systemd/network/${bridge_name}.network"
 sudo systemctl enable --now systemd-networkd
