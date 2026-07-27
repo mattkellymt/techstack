@@ -10,8 +10,8 @@ sudo dnf -y install systemd systemd-networkd systemd-container
 
 # bridge
 sudo install -m 644 \
-	"${host_config}/bridge-0.netdev" \
-	"${host_config}/bridge-0.network" \
+	"${host_config}/network/bridge-0.netdev" \
+	"${host_config}/network/bridge-0.network" \
 	/etc/systemd/network/
 sudo systemctl enable --now systemd-networkd
 sudo networkctl reload
