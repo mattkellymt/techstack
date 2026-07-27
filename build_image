@@ -6,9 +6,7 @@ image_name="sandbox"
 build_root=$(sudo mktemp -d --tmpdir=/dev/shm "${image_name}.XXXXXXXX")
 image_root="${build_root}/bundle/rootfs"
 
-cleanup() {
-	sudo rm -rf -- "${build_root}"
-}
+cleanup() { sudo rm -rf -- "${build_root}" }
 trap cleanup EXIT
 
 packages=(
