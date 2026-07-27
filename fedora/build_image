@@ -47,5 +47,5 @@ sudo machinectl remove "${image_name}" 2>/dev/null || true
 sudo install -D -m 644 \
 	"${script_dir}/host/etc/systemd/nspawn/${image_name}.nspawn" \
 	"/etc/systemd/nspawn/${image_name}.nspawn"
-sudo importctl --class=machine import-fs "${image_root}" "${image_name}"
+sudo mv "${image_root}" "/var/lib/machines/${image_name}"
 sudo systemctl enable --now "systemd-nspawn@${image_name}.service"
