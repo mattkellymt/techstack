@@ -6,5 +6,12 @@ image_name="sandbox"
 
 sudo systemctl stop "systemd-nspawn@${image_name}.service"
 sudo mkosi --directory "${script_dir}/mkosi" --force build
+
+# machinectl only honors privileged nspawn settings such as Zone= from
+# the trusted host configuration directories.
+sudo install -D -m 644 \
+	"${script_dir}/mkosi/mkosi.nspawn" \
+	"/etc/systemd/nspawn/${image_name}.nspawn"
+
 sudo machinectl enable "${image_name}"
 sudo machinectl start "${image_name}"
