@@ -2,5 +2,4 @@
 NotifyReady=yes
 
 [Network]
-# systemd-nspawn creates the shared vz-sandbox bridge on demand.
-Zone=sandbox
+Bridge=bridge-0
