@@ -5,7 +5,7 @@ script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
 image_name="sandbox"
 image_root="/var/lib/machines/${image_name}"
 build_name="${image_name}.build"
-build_root="/var/lib/machines/${build_name}"
+build_root="/var/tmp/${build_name}"
 machine_root="${script_dir}/machine"
 host_root="${script_dir}/host"
 
@@ -27,16 +27,17 @@ if [[ ! -e /usr/share/debootstrap/scripts/resolute ]]; then
 	debootstrap_script+=(/usr/share/debootstrap/scripts/gutsy)
 fi
 
-sudo machinectl remove "${build_name}" 2>/dev/null || true
+sudo rm -rf -- "${build_root}"
 sudo cp -R "${machine_root}" "${build_root}"
 
 sudo debootstrap \
 	--variant=minbase \
 	resolute \
 	"${build_root}" \
-	http://archive.ubuntu.com/ubuntu \
+	https://archive.ubuntu.com/ubuntu \
 	"${debootstrap_script[@]}"
 
+sudo rm "${build_root}/etc/apt/sources.list"
 sudo chroot "${build_root}" apt-get update
 sudo chroot "${build_root}" env DEBIAN_FRONTEND=noninteractive \
 	apt-get -y install "${packages[@]}"
@@ -46,10 +47,9 @@ sudo chroot "${build_root}" \
 	useradd --create-home --user-group --groups sudo agent
 sudo chroot "${build_root}" passwd --delete agent
 
-sudo systemctl --root="${build_root}" preset-all
-sudo systemd-machine-id-setup --root="${build_root}"
+sudo systemctl --root="${build_root}" enable systemd-networkd.service || true
 
-sudo systemctl stop "systemd-nspawn@${image_name}.service"
+sudo systemctl stop "systemd-nspawn@${image_name}.service" 2>/dev/null || true
 sudo machinectl remove "${image_name}" 2>/dev/null || true
 sudo mv "${build_root}" "${image_root}"
 
