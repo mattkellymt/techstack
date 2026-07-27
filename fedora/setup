@@ -10,5 +10,11 @@ sudo dnf -y install systemd systemd-networkd systemd-container mkosi
 # mkosi's nspawn networking relies on systemd-networkd on the host.
 sudo systemctl enable --now systemd-networkd
 
+# machinectl only honors privileged nspawn settings such as Zone= from
+# the trusted host configuration directories.
+sudo install -D -m 644 \
+	"${script_dir}/mkosi/mkosi.nspawn" \
+	/etc/systemd/nspawn/sandbox.nspawn
+
 # image
 "${script_dir}/build_image"

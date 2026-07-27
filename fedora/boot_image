@@ -1,6 +1,0 @@
-#!/bin/bash
-set -eo pipefail
-
-script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
-
-exec sudo mkosi --directory "${script_dir}/mkosi" boot

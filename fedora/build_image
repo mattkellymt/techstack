@@ -2,5 +2,9 @@
 set -eo pipefail
 
 script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
+image_name="sandbox"
 
+sudo systemctl stop "systemd-nspawn@${image_name}.service"
 sudo mkosi --directory "${script_dir}/mkosi" --force build
+sudo machinectl enable "${image_name}"
+sudo machinectl start "${image_name}"
