@@ -37,8 +37,6 @@ sudo umoci unpack \
 	"${bundle_root}"
 
 sudo cp -R "${machine_root}/." "${bundle_rootfs}/"
-sudo rm -f "${bundle_rootfs}/etc/resolv.conf"
-sudo cp --dereference /etc/resolv.conf "${bundle_rootfs}/etc/resolv.conf"
 sudo chroot "${bundle_rootfs}" dnf -y install "${packages[@]}"
 sudo ln -sfn ../run/systemd/resolve/stub-resolv.conf \
 	"${bundle_rootfs}/etc/resolv.conf"
