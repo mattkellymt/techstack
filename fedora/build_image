@@ -21,6 +21,7 @@ packages=(
 sudo systemctl stop "systemd-nspawn@${image_name}.service"
 sudo machinectl remove "${image_name}" 2>/dev/null || true
 sudo mkdir -p "${image_root}"
+sudo cp -R "${config_root}/." "${image_root}/"
 
 sudo dnf -y \
 	--installroot="${image_root}" \
@@ -29,13 +30,7 @@ sudo dnf -y \
 	--setopt=install_weak_deps=True \
 	install "${packages[@]}"
 
-sudo install -D -m 440 \
-	"${config_root}/etc/sudoers.d/agent" \
-	"${image_root}/etc/sudoers.d/agent"
-sudo install -D -m 644 \
-	"${config_root}/usr/lib/systemd/system-preset/10-sandbox.preset" \
-	"${image_root}/usr/lib/systemd/system-preset/10-sandbox.preset"
-
+sudo chmod 440 "${image_root}/etc/sudoers.d/agent"
 sudo chroot "${image_root}" \
 	useradd --create-home --user-group --groups wheel agent
 sudo chroot "${image_root}" passwd --delete agent
