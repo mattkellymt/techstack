@@ -38,8 +38,6 @@ sudo umoci unpack \
 
 sudo cp -R "${machine_root}/." "${bundle_rootfs}/"
 sudo chroot "${bundle_rootfs}" dnf -y install "${packages[@]}"
-sudo ln -sfn ../run/systemd/resolve/stub-resolv.conf \
-	"${bundle_rootfs}/etc/resolv.conf"
 
 sudo chmod 440 "${bundle_rootfs}/etc/sudoers.d/agent"
 sudo chroot "${bundle_rootfs}" \
