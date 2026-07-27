@@ -1,1 +1,1 @@
-${agent_user} ALL=(ALL) NOPASSWD: ALL
+${user} ALL=(ALL) NOPASSWD: ALL

@@ -8,11 +8,11 @@ export bridge_name="bridge-0"
 export bridge_address="10.203.17.1/24"
 export image_name="sandbox"
 export machine_dir="/var/lib/machines"
-export agent_user="agent"
+export user="agent"
 os_root="${machine_dir}/${image_name}"
 
 render() {
-	envsubst '${distribution} ${release} ${bridge_name} ${bridge_address} ${image_name} ${machine_dir} ${agent_user}' \
+	envsubst '${distribution} ${release} ${bridge_name} ${bridge_address} ${image_name} ${machine_dir} ${user}' \
 		< "${script_dir}/templates/${1}"
 }
 
@@ -41,12 +41,12 @@ chmod 644 "${mkosi_conf}"
 
 sudo mkosi --directory "${script_dir}" --include "${mkosi_conf}" --force build
 sudo systemctl --root "${os_root}" enable systemd-networkd
-sudo useradd --root "${os_root}" --create-home --user-group --groups wheel "${agent_user}"
-sudo passwd --root "${os_root}" --delete "${agent_user}"
+sudo useradd --root "${os_root}" --create-home --user-group --groups wheel "${user}"
+sudo passwd --root "${os_root}" --delete "${user}"
 
-render sudoers | sudo install -m 440 /dev/stdin "${os_root}/etc/sudoers.d/${agent_user}"
+render sudoers | sudo install -m 440 /dev/stdin "${os_root}/etc/sudoers.d/${user}"
 render machine.nspawn | sudo install -D -m 644 /dev/stdin "/etc/systemd/nspawn/${image_name}.nspawn"
 
 # start the container
 sudo systemctl start "systemd-nspawn@${image_name}.service"
-sudo machinectl shell "${agent_user}"@"${image_name}" /bin/bash -lc "sudo dnf -y upgrade"
+sudo machinectl shell "${user}"@"${image_name}" /bin/bash -lc "sudo dnf -y upgrade"
