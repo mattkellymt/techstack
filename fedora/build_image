@@ -5,12 +5,14 @@ script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
 image_name="sandbox"
 
 sudo systemctl stop "systemd-nspawn@${image_name}.service"
+sudo machinectl remove "${image_name}" 2>/dev/null || true
 sudo mkosi --directory "${script_dir}/mkosi" --force build
 
 # machinectl only honors privileged nspawn settings such as Zone= from
 # the trusted host configuration directories.
-sudo install -D -m 644 \
-	"${script_dir}/mkosi/mkosi.nspawn" \
+sudo install -d -m 755 /etc/systemd/nspawn
+sudo mv \
+	"/var/lib/machines/${image_name}.nspawn" \
 	"/etc/systemd/nspawn/${image_name}.nspawn"
 
 sudo machinectl enable "${image_name}"
