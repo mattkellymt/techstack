@@ -4,11 +4,7 @@ set -eo pipefail
 script_dir=$(cd -- "$(dirname -- "${0}")" && pwd)
 image_name="sandbox"
 build_root=$(sudo mktemp -d --tmpdir=/dev/shm "${image_name}.XXXXXXXX")
-oci_root="${build_root}/image"
-bundle_root="${build_root}/bundle"
-bundle_rootfs="${bundle_root}/rootfs"
-machine_root="${script_dir}/machine"
-host_root="${script_dir}/host"
+image_root="${build_root}/bundle/rootfs"
 
 cleanup() {
 	sudo rm -rf -- "${build_root}"
@@ -29,27 +25,27 @@ packages=(
 
 sudo skopeo copy \
 	docker://registry.fedoraproject.org/fedora:44 \
-	"oci:${oci_root}:44"
+	"oci:${build_root}/image:44"
 sudo umoci unpack \
-	--image "${oci_root}:44" \
-	"${bundle_root}"
+	--image "${build_root}/image:44" \
+	"${build_root}/bundle"
 
-sudo cp -R "${machine_root}/." "${bundle_rootfs}/"
-sudo chroot "${bundle_rootfs}" dnf -y install "${packages[@]}"
-sudo chroot "${bundle_rootfs}" systemctl enable systemd-networkd.service
+sudo cp -R "${script_dir}/machine/." "${image_root}/"
+sudo chroot "${image_root}" dnf -y install "${packages[@]}"
+sudo chroot "${image_root}" systemctl enable systemd-networkd.service
 
-sudo chroot "${bundle_rootfs}" rm -f /etc/machine-id
-sudo chroot "${bundle_rootfs}" systemd-machine-id-setup
+sudo chroot "${image_root}" rm -f /etc/machine-id
+sudo chroot "${image_root}" systemd-machine-id-setup
 
-sudo chroot "${bundle_rootfs}" chmod 440 /etc/sudoers.d/agent
-sudo chroot "${bundle_rootfs}" useradd --create-home --user-group --groups wheel agent
-sudo chroot "${bundle_rootfs}" passwd --delete agent
+sudo chroot "${image_root}" chmod 440 /etc/sudoers.d/agent
+sudo chroot "${image_root}" useradd --create-home --user-group --groups wheel agent
+sudo chroot "${image_root}" passwd --delete agent
 
 sudo systemctl stop "systemd-nspawn@${image_name}.service" 2>/dev/null || true
 sudo machinectl remove "${image_name}" 2>/dev/null || true
 
 sudo install -D -m 644 \
-	"${host_root}/etc/systemd/nspawn/${image_name}.nspawn" \
+	"${script_dir}/host/etc/systemd/nspawn/${image_name}.nspawn" \
 	"/etc/systemd/nspawn/${image_name}.nspawn"
-sudo importctl --class=machine import-fs "${bundle_rootfs}" "${image_name}"
+sudo importctl --class=machine import-fs "${image_root}" "${image_name}"
 sudo systemctl enable --now "systemd-nspawn@${image_name}.service"
