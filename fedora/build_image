@@ -28,7 +28,6 @@ sudo dnf -y \
 	--installroot="${build_root}" \
 	--releasever=44 \
 	--use-host-config \
-	--setopt=install_weak_deps=True \
 	install "${packages[@]}"
 
 sudo chmod 440 "${build_root}/etc/sudoers.d/agent"
