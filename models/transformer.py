@@ -8,6 +8,7 @@ import time
 # ==========================================
 # 1. Configuration & Global Setup
 # ==========================================
+
 if torch.cuda.is_available():
     device = torch.device("cuda")
 elif torch.backends.mps.is_available():
@@ -276,6 +277,9 @@ optimizer = Muon(
 # ==========================================
 # 2. TRAINING STEP (Forward, Loss, Backward & Muon Optimizer)
 # ==========================================
+
+print(f"--- Starting Training Loop on {device} (Muon Optimizer) ---")
+
 vocab_size = config['vocab_size']
 batch_size = config['batch_size']
 seq_len = config['seq_len']
@@ -284,8 +288,6 @@ loss_target = config['loss_target']
 inputs = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long, device=device)
 targets = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long, device=device)
 start_time = time.time()
-
-print(f"--- Starting Training Loop on {device} (Muon Optimizer) ---")
 
 for step in count(1):
     model.zero_grad()
