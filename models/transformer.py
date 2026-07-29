@@ -2,7 +2,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from itertools import count
-from muon import Muon
 
 # ==========================================
 # 1. Configuration & Global Setup
@@ -14,29 +13,103 @@ elif torch.backends.mps.is_available():
 else:
     device = torch.device("cpu")
 
-dtype = torch.float32
+dtype = torch.float16
 
 # Top-level Model & Training Configuration Dictionary
 config = {
-    'n_layers': 2,            # Ollama GGUF: llama.block_count
+    'n_layers': 2,            
     'batch_size': 4,
-    'n_heads': 8,             # Ollama GGUF: llama.attention.head_count
-    'n_kv_heads': 2,          # Ollama GGUF: llama.attention.head_count_kv (MHA=8, MQA=1, GQA=2)
-    'head_dim': 16,           # Head Dimension (vocab_dim // n_heads)
-    'seq_len': 32,            # Ollama GGUF: llama.context_length
-    'vocab_dim': 128,         # 8 * 16 - Ollama GGUF: llama.embedding_length
-    'kv_dim': 32,             # 2 * 16
-    'hidden_dim': 256,        # Ollama GGUF: llama.feed_forward_length
-    'vocab_size': 512,        # Ollama GGUF: llama.vocab_size
-    'eps': 1 / 100_000,       # Ollama GGUF: llama.attention.layer_norm_rms_epsilon
-    'rope_theta': 10_000.0,   # Ollama GGUF: llama.rope.freq_base
+    'n_heads': 8,             
+    'n_kv_heads': 2,          
+    'head_dim': 16,          
+    'seq_len': 32,           
+    'vocab_dim': 128,        
+    'kv_dim': 32,             
+    'hidden_dim': 256,        
+    'vocab_size': 512,       
+    'eps': 1 / 1024,       
+    'rope_theta': 10_000.0,   
     'adamw_lr': 1e-3,
     'muon_lr': 0.02,
     'loss_target': 1 / 128,
+    'lr': 0.02,
+    'momentum': 0.95,
+    'adamw_lr': 1e-3,
 }
 
-# Derived Mathematical Constants
-n_rep = config['n_heads'] // config['n_kv_heads']
+class Muon(torch.optim.Optimizer):
+    def __init__(self, params, lr, momentum, adamw_lr, eps, **kwargs):
+        matrix_params = [p for p in params if p.ndim >= 2]
+        vector_params = [p for p in params if p.ndim < 2]
+        self.adamw = torch.optim.AdamW(vector_params, lr=adamw_lr, eps=eps) if vector_params else None
+        super().__init__(matrix_params, dict(lr=lr, momentum=momentum, eps=eps))
+        self.eps = eps 
+        self.steps = 5
+
+    def zero_grad(self, set_to_none=True):
+        super().zero_grad(set_to_none=set_to_none)
+        if self.adamw:
+            self.adamw.zero_grad(set_to_none=set_to_none)
+
+    def newton_schulz(self, G):
+        assert G.ndim == 2
+        a, b, c = 3.4445, -4.7750, 2.0315
+        X = G / (G.norm() + self.eps)
+        if G.size(0) > G.size(1):
+            X = X.T
+        for _ in range(self.steps):
+            A = X @ X.T
+            B = b * A + c * A @ A
+            X = a * X + B @ X
+        if G.size(0) > G.size(1):
+            X = X.T
+        return X
+
+    def apply_update_2d(self, p, buf, lr):
+        scale = lr * max(1, p.shape[0] / p.shape[1]) ** 0.5
+        update = self.newton_schulz(buf)
+        p.sub_(update, alpha=scale)
+
+    def apply_update_3d(self, p, buf, lr):
+        for layer_idx in range(p.shape[0]):
+            self.apply_update_2d(p[layer_idx], buf[layer_idx], lr)
+
+    def apply_update(self, p, buf, lr):
+        match p.ndim:
+            case 2:
+                self.apply_update_2d(p, buf, lr)
+            case 3:
+                self.apply_update_3d(p, buf, lr)
+            case _:
+                raise ValueError(f"Muon optimizer only supports 2D or 3D parameters, got ndim={p.ndim}")
+
+    def step_param(self, p, group):
+        if p.grad is None:
+            return
+
+        lr, momentum, eps = group["lr"], group["momentum"], group["eps"]
+        state = self.state[p]
+        if "momentum_buf" not in state:
+            state["momentum_buf"] = torch.zeros_like(p)
+
+        buf = state["momentum_buf"]
+        buf.mul_(momentum).add_(p.grad, alpha=1.0 - momentum)
+        self.apply_update(p, buf, lr)
+
+    def step_group(self, group):
+        for p in group["params"]:
+            self.step_param(p, group)
+
+    @torch.no_grad()
+    def step(self, closure=None):
+        loss = closure() if closure is not None else None
+        if self.adamw:
+            self.adamw.step()
+
+        for group in self.param_groups:
+            self.step_group(group)
+
+        return loss
 
 def create_param(*shape):
     return nn.ParameterDict({'weight': nn.Parameter(torch.empty(*shape))})
@@ -185,7 +258,7 @@ model = Model(**config).to(device=device, dtype=dtype)
 model.init_params()
 
 # Initialize Custom Muon Optimizer
-optimizer = Muon(model.parameters(), lr=config['muon_lr'], adamw_lr=config['adamw_lr'], eps=config['eps'])
+optimizer = Muon(model.parameters(), **config)
 
 # ==========================================
 # 2. TRAINING STEP (Forward, Loss, Backward & Muon Optimizer)
@@ -217,7 +290,7 @@ for step in count(1):
     loss_val = loss.item()
     print(f"Training Step {step} | Loss: {loss_val:.4f}")
 
-    if loss_val < loss_target:
+    if loss_val < loss_target or loss_val != loss_val:
         print(f"Training complete! Loss has reached the target threshold of {loss_target}.")
         model.save("ollama_model.pt")
         break
