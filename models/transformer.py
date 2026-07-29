@@ -36,52 +36,73 @@ config = {
 }
 
 # Derived Mathematical Constants
-pivot = config['head_dim'] // 2
-scale = 1.0 / (config['head_dim'] ** 0.5)
 n_rep = config['n_heads'] // config['n_kv_heads']
 
 def create_param(*shape):
     return nn.ParameterDict({'weight': nn.Parameter(torch.empty(*shape))})
 
 class RMSNorm(nn.Module):
-    def __init__(self, vocab_dim, **kwargs):
+    def __init__(self, vocab_dim, eps, **kwargs):
         super().__init__()
+        self.eps = eps
         self.weight = nn.Parameter(torch.empty(vocab_dim))
 
-    def forward(self, x, eps=config['eps']):
+    def forward(self, x):
         variance = x.pow(2).mean(dim=-1, keepdim=True)
-        return (x * torch.rsqrt(variance + eps)) * self.weight
+        return (x * torch.rsqrt(variance + self.eps)) * self.weight
 
 class Attention(nn.Module):
     def __init__(self, vocab_dim, kv_dim, **kwargs):
         super().__init__()
+        self.n_heads = config['n_heads']
+        self.head_dim = config['head_dim']
+        self.n_kv_heads = config['n_kv_heads']
+
+        theta = 1.0 / (config['rope_theta'] ** (torch.arange(0, config['head_dim'], 2, dtype=torch.float32) / config['head_dim']))
+        seq_idx = torch.arange(config['seq_len'], dtype=torch.float32)
+        idx_theta = torch.outer(seq_idx, theta)
+
+        self.rope_cos = idx_theta.cos().to(dtype).to(device)
+        self.rope_sin = idx_theta.sin().to(dtype).to(device)
+
+        self.scale = 1.0 / (self.head_dim ** 0.5)
+        self.causal_mask = torch.ones(0).to(bool).to(device)
+
         self.q_proj = create_param(vocab_dim, vocab_dim)
         self.k_proj = create_param(vocab_dim, kv_dim)
         self.v_proj = create_param(vocab_dim, kv_dim)
         self.o_proj = create_param(vocab_dim, vocab_dim)
 
-    def rope(self, x, cos, sin, pivot=pivot):
+    def rope(self, x):
+        pivot = x.shape[-1] // 2
         x1, x2 = x[..., :pivot], x[..., pivot:]
         out = torch.empty_like(x)
-        out[..., :pivot] = x1 * cos - x2 * sin
-        out[..., pivot:] = x1 * sin + x2 * cos
+        out[..., :pivot] = x1 * self.rope_cos - x2 * self.rope_sin
+        out[..., pivot:] = x1 * self.rope_sin + x2 * self.rope_cos
         return out
 
-    def forward(self, x, rope_cos, rope_sin, causal_mask):
+    def forward(self, x):
         b, s, d = x.shape
-        q = torch.matmul(x, self.q_proj.weight).reshape(b, s, config['n_heads'], config['head_dim']).transpose(1, 2)
-        k = torch.matmul(x, self.k_proj.weight).reshape(b, s, config['n_kv_heads'], config['head_dim']).transpose(1, 2)
-        v = torch.matmul(x, self.v_proj.weight).reshape(b, s, config['n_kv_heads'], config['head_dim']).transpose(1, 2)
+        q = torch.matmul(x, self.q_proj.weight).reshape(b, s, self.n_heads, self.head_dim).transpose(1, 2)
+        k = torch.matmul(x, self.k_proj.weight).reshape(b, s, self.n_kv_heads, self.head_dim).transpose(1, 2)
+        v = torch.matmul(x, self.v_proj.weight).reshape(b, s, self.n_kv_heads, self.head_dim).transpose(1, 2)
 
-        q = self.rope(q, rope_cos, rope_sin)
-        k = self.rope(k, rope_cos, rope_sin)
+        q = self.rope(q)
+        k = self.rope(k)
 
-        if n_rep > 1:
-            k = k.repeat_interleave(n_rep, dim=1)
-            v = v.repeat_interleave(n_rep, dim=1)
+        n_groups = self.n_heads // self.n_kv_heads
 
-        attn = torch.matmul(q, k.transpose(-2, -1)) * scale
-        attn = torch.softmax(attn + causal_mask, dim=-1)
+        k = k.repeat_interleave(n_groups, dim=1)
+        v = v.repeat_interleave(n_groups, dim=1)
+
+        if self.causal_mask.shape != (s, s):
+            self.causal_mask = torch.ones(s, s, dtype=bool, device=device).triu(diagonal=1)
+        causal_mask = self.causal_mask
+
+        attn = torch.matmul(q, k.transpose(-2, -1)) * self.scale
+        attn = attn.masked_fill(causal_mask, float("-inf"))
+        attn = torch.softmax(attn, dim=-1)
+        
         attn_out = torch.matmul(attn, v).transpose(1, 2).reshape(b, s, d)
         return torch.matmul(attn_out, self.o_proj.weight)
 
@@ -105,8 +126,8 @@ class Block(nn.Module):
         self.post_attention_layernorm = RMSNorm(**kwargs)
         self.mlp = MLP(**kwargs)
 
-    def forward(self, x, rope_cos, rope_sin, causal_mask):
-        x = x + self.self_attn(self.input_layernorm(x), rope_cos, rope_sin, causal_mask)
+    def forward(self, x):
+        x = x + self.self_attn(self.input_layernorm(x))
         x = x + self.mlp(self.post_attention_layernorm(x))
         return x
 
@@ -121,18 +142,10 @@ class Model(nn.Module):
         })
         self.lm_head = create_param(config['vocab_dim'], config['vocab_size'])
 
-        # Precompute RoPE Frequency Tables & Causal Mask Buffers (Excluded from .pt checkpoint state_dict!)
-        theta = 1.0 / (config['rope_theta'] ** (torch.arange(0, config['head_dim'], 2, dtype=torch.float32) / config['head_dim']))
-        seq_idx = torch.arange(config['seq_len'], dtype=torch.float32)
-        idx_theta = torch.outer(seq_idx, theta)
-        self.register_buffer('rope_cos', idx_theta.cos().to(dtype), persistent=False)
-        self.register_buffer('rope_sin', idx_theta.sin().to(dtype), persistent=False)
-        self.register_buffer('causal_mask', torch.triu(torch.full((config['seq_len'], config['seq_len']), float('-inf'), dtype=dtype), diagonal=1), persistent=False)
-
     def forward(self, inputs):
         x = self.model.embed_tokens.weight[inputs]
         for layer in self.model.layers:
-            x = layer(x, self.rope_cos, self.rope_sin, self.causal_mask)
+            x = layer(x)
         x = self.model.norm(x)
         return torch.matmul(x, self.lm_head.weight)
 
