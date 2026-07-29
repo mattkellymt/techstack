@@ -94,24 +94,11 @@ class RMSNorm(nn.Module):
         return (x * torch.rsqrt(var + self.eps)) * self.weight
 
 
-class Attention(nn.Module):
-    def __init__(self, vocab_dim, kv_dim, n_heads, n_kv_heads, head_dim, rope_theta=500000.0, rope_scaling=None, seq_len=2048, **kwargs):
+class RoPE(nn.Module):
+    def __init__(self, head_dim, rope_theta=500000.0, rope_scaling=None, seq_len=2048, **kwargs):
         super().__init__()
-        if n_heads % n_kv_heads != 0:
-            raise ValueError("n_heads must be divisible by n_kv_heads")
-        if head_dim % 2 != 0:
-            raise ValueError("head_dim must be even")
-        expected_kv_dim = n_kv_heads * head_dim
-        if kv_dim != expected_kv_dim:
-            raise ValueError(f"kv_dim ({kv_dim}) must equal n_kv_heads * head_dim ({expected_kv_dim})")
-
-        self.n_heads = n_heads
         self.head_dim = head_dim
-        self.n_kv_heads = n_kv_heads
-        self.q_dim = n_heads * head_dim
-        self.scale = 1.0 / (self.head_dim ** 0.5)
-
-        inv_freq = 1.0 / (rope_theta ** (torch.arange(0, self.head_dim, 2, dtype=torch.float32) / self.head_dim))
+        inv_freq = 1.0 / (rope_theta ** (torch.arange(0, head_dim, 2, dtype=torch.float32) / head_dim))
         if rope_scaling and rope_scaling.get("rope_type") == "llama3":
             factor = rope_scaling.get("factor", 32.0)
             low_freq_factor = rope_scaling.get("low_freq_factor", 1.0)
@@ -138,23 +125,43 @@ class Attention(nn.Module):
         freqs = torch.outer(t, inv_freq)
         emb = torch.cat((freqs, freqs), dim=-1)
 
-        self.register_buffer('rope_cos', emb.cos(), persistent=False)
-        self.register_buffer('rope_sin', emb.sin(), persistent=False)
+        self.register_buffer('cos', emb.cos(), persistent=False)
+        self.register_buffer('sin', emb.sin(), persistent=False)
+
+    def forward(self, x):
+        s = x.shape[-2]
+        cos = self.cos[:s].unsqueeze(0).unsqueeze(0)
+        sin = self.sin[:s].unsqueeze(0).unsqueeze(0)
+        x1 = x[..., :self.head_dim // 2]
+        x2 = x[..., self.head_dim // 2:]
+        rotate_x = torch.cat((-x2, x1), dim=-1)
+        return (x * cos) + (rotate_x * sin)
+
+
+class Attention(nn.Module):
+    def __init__(self, vocab_dim, kv_dim, n_heads, n_kv_heads, head_dim, rope_theta=500000.0, rope_scaling=None, seq_len=2048, **kwargs):
+        super().__init__()
+        if n_heads % n_kv_heads != 0:
+            raise ValueError("n_heads must be divisible by n_kv_heads")
+        if head_dim % 2 != 0:
+            raise ValueError("head_dim must be even")
+        expected_kv_dim = n_kv_heads * head_dim
+        if kv_dim != expected_kv_dim:
+            raise ValueError(f"kv_dim ({kv_dim}) must equal n_kv_heads * head_dim ({expected_kv_dim})")
+
+        self.n_heads = n_heads
+        self.head_dim = head_dim
+        self.n_kv_heads = n_kv_heads
+        self.q_dim = n_heads * head_dim
+        self.scale = 1.0 / (self.head_dim ** 0.5)
+
+        self.rope = RoPE(head_dim, rope_theta=rope_theta, rope_scaling=rope_scaling, seq_len=seq_len)
         self.register_buffer('causal_mask', torch.ones(0, dtype=torch.bool), persistent=False)
 
         self.q_proj = create_param(vocab_dim, self.q_dim)
         self.k_proj = create_param(vocab_dim, expected_kv_dim)
         self.v_proj = create_param(vocab_dim, expected_kv_dim)
         self.o_proj = create_param(self.q_dim, vocab_dim)
-
-    def rope(self, x):
-        s = x.shape[-2]
-        cos = self.rope_cos[:s].unsqueeze(0).unsqueeze(0)
-        sin = self.rope_sin[:s].unsqueeze(0).unsqueeze(0)
-        x1 = x[..., :self.head_dim // 2]
-        x2 = x[..., self.head_dim // 2:]
-        rotate_x = torch.cat((-x2, x1), dim=-1)
-        return (x * cos) + (rotate_x * sin)
 
     def forward(self, x):
         b, s, d = x.shape
@@ -178,6 +185,7 @@ class Attention(nn.Module):
 
         out = torch.matmul(attn, v).transpose(1, 2).reshape(b, s, self.q_dim)
         return torch.matmul(out, self.o_proj.weight)
+
 
 
 class MLP(nn.Module):

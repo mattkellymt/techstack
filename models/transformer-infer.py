@@ -1,8 +1,6 @@
 import argparse
 import json
 import os
-import sys
-import time
 import requests
 import torch
 from safetensors.torch import load_file as load_safetensors, save_file as save_safetensors
@@ -12,7 +10,7 @@ from huggingface_hub import hf_hub_download
 from architecture import Model
 
 # ==========================================
-# 1. Configuration & Global Setup
+# 1. Configuration & Setup
 # ==========================================
 
 if torch.cuda.is_available():
@@ -51,11 +49,10 @@ CONFIG_PATH = "llama3_2_1b.json"
 
 
 # ==========================================
-# 2. Model Weight Setup & Helper Functions
+# 2. Model Helpers & Inference
 # ==========================================
 
 def ensure_model_weights():
-    """Ensure transparent local weights exist for Llama 3.2 1B."""
     if os.path.exists(CHECKPOINT_PATH) and os.path.exists(CONFIG_PATH):
         return
 
@@ -63,25 +60,22 @@ def ensure_model_weights():
     hf_path = hf_hub_download(repo_id=HF_REPO_ID, filename="model.safetensors")
     sd = load_safetensors(hf_path)
 
-    mapped_sd = {}
-    mapped_sd["model.embed_tokens.weight"] = sd["model.embed_tokens.weight"].to(torch.bfloat16).contiguous()
-    mapped_sd["model.norm.weight"] = sd["model.norm.weight"].to(torch.bfloat16).contiguous()
-
-    if "lm_head.weight" in sd:
-        mapped_sd["lm_head.weight"] = sd["lm_head.weight"].T.to(torch.bfloat16).contiguous()
-    else:
-        mapped_sd["lm_head.weight"] = sd["model.embed_tokens.weight"].T.to(torch.bfloat16).contiguous()
+    mapped_sd = {
+        "model.embed_tokens.weight": sd["model.embed_tokens.weight"].to(dtype).contiguous(),
+        "model.norm.weight": sd["model.norm.weight"].to(dtype).contiguous(),
+        "lm_head.weight": sd.get("lm_head.weight", sd["model.embed_tokens.weight"]).T.to(dtype).contiguous(),
+    }
 
     for i in range(16):
-        mapped_sd[f"model.layers.{i}.input_layernorm.weight"] = sd[f"model.layers.{i}.input_layernorm.weight"].to(torch.bfloat16).contiguous()
-        mapped_sd[f"model.layers.{i}.self_attn.q_proj.weight"] = sd[f"model.layers.{i}.self_attn.q_proj.weight"].T.to(torch.bfloat16).contiguous()
-        mapped_sd[f"model.layers.{i}.self_attn.k_proj.weight"] = sd[f"model.layers.{i}.self_attn.k_proj.weight"].T.to(torch.bfloat16).contiguous()
-        mapped_sd[f"model.layers.{i}.self_attn.v_proj.weight"] = sd[f"model.layers.{i}.self_attn.v_proj.weight"].T.to(torch.bfloat16).contiguous()
-        mapped_sd[f"model.layers.{i}.self_attn.o_proj.weight"] = sd[f"model.layers.{i}.self_attn.o_proj.weight"].T.to(torch.bfloat16).contiguous()
-        mapped_sd[f"model.layers.{i}.post_attention_layernorm.weight"] = sd[f"model.layers.{i}.post_attention_layernorm.weight"].to(torch.bfloat16).contiguous()
-        mapped_sd[f"model.layers.{i}.mlp.gate_proj.weight"] = sd[f"model.layers.{i}.mlp.gate_proj.weight"].T.to(torch.bfloat16).contiguous()
-        mapped_sd[f"model.layers.{i}.mlp.up_proj.weight"] = sd[f"model.layers.{i}.mlp.up_proj.weight"].T.to(torch.bfloat16).contiguous()
-        mapped_sd[f"model.layers.{i}.mlp.down_proj.weight"] = sd[f"model.layers.{i}.mlp.down_proj.weight"].T.to(torch.bfloat16).contiguous()
+        mapped_sd[f"model.layers.{i}.input_layernorm.weight"] = sd[f"model.layers.{i}.input_layernorm.weight"].to(dtype).contiguous()
+        mapped_sd[f"model.layers.{i}.self_attn.q_proj.weight"] = sd[f"model.layers.{i}.self_attn.q_proj.weight"].T.to(dtype).contiguous()
+        mapped_sd[f"model.layers.{i}.self_attn.k_proj.weight"] = sd[f"model.layers.{i}.self_attn.k_proj.weight"].T.to(dtype).contiguous()
+        mapped_sd[f"model.layers.{i}.self_attn.v_proj.weight"] = sd[f"model.layers.{i}.self_attn.v_proj.weight"].T.to(dtype).contiguous()
+        mapped_sd[f"model.layers.{i}.self_attn.o_proj.weight"] = sd[f"model.layers.{i}.self_attn.o_proj.weight"].T.to(dtype).contiguous()
+        mapped_sd[f"model.layers.{i}.post_attention_layernorm.weight"] = sd[f"model.layers.{i}.post_attention_layernorm.weight"].to(dtype).contiguous()
+        mapped_sd[f"model.layers.{i}.mlp.gate_proj.weight"] = sd[f"model.layers.{i}.mlp.gate_proj.weight"].T.to(dtype).contiguous()
+        mapped_sd[f"model.layers.{i}.mlp.up_proj.weight"] = sd[f"model.layers.{i}.mlp.up_proj.weight"].T.to(dtype).contiguous()
+        mapped_sd[f"model.layers.{i}.mlp.down_proj.weight"] = sd[f"model.layers.{i}.mlp.down_proj.weight"].T.to(dtype).contiguous()
 
     save_safetensors(mapped_sd, CHECKPOINT_PATH)
     with open(CONFIG_PATH, "w") as f:
@@ -89,9 +83,7 @@ def ensure_model_weights():
     print(f"Converted and saved weights to '{CHECKPOINT_PATH}'.")
 
 
-def run_inference(prompt: str, model: Model, tokenizer: AutoTokenizer, max_new_tokens: int = 256, temperature: float = 0.0) -> str:
-    """Pure token-ints-in, token-ints-out inference wrapping."""
-    # Convert input string to token IDs
+def run_inference(prompt, model, tokenizer, max_new_tokens=256, temperature=0.0):
     prompt_encoding = tokenizer.apply_chat_template(
         [{"role": "user", "content": prompt}],
         add_generation_prompt=True,
@@ -100,33 +92,28 @@ def run_inference(prompt: str, model: Model, tokenizer: AutoTokenizer, max_new_t
     input_ids = prompt_encoding["input_ids"].to(device=device)
 
     curr_tokens = input_ids
-    eos_token_ids = [128009, 128001]
+    eos_token_ids = {128009, 128001}
 
     with torch.no_grad():
         for _ in range(max_new_tokens):
             logits = model(curr_tokens)
-            next_token_logits = logits[:, -1, :]
-            
+            next_logits = logits[:, -1, :]
+
             if temperature == 0.0:
-                next_token = torch.argmax(next_token_logits, dim=-1, keepdim=True)
+                next_token = torch.argmax(next_logits, dim=-1, keepdim=True)
             else:
-                probs = torch.softmax(next_token_logits / temperature, dim=-1)
+                probs = torch.softmax(next_logits / temperature, dim=-1)
                 next_token = torch.multinomial(probs, num_samples=1)
 
             curr_tokens = torch.cat([curr_tokens, next_token], dim=1)
-
             if next_token.item() in eos_token_ids:
                 break
 
     gen_token_ids = curr_tokens[0][input_ids.shape[1]:].tolist()
-    
-    # Convert output token IDs to string
-    output_text = tokenizer.decode(gen_token_ids, skip_special_tokens=True).strip()
-    return output_text
+    return tokenizer.decode(gen_token_ids, skip_special_tokens=True).strip()
 
 
-def query_ollama(prompt: str, model_name: str = "llama3.2:1b") -> str:
-    """Query local Ollama server at temperature 0."""
+def query_ollama(prompt, model_name="llama3.2:1b"):
     url = "http://localhost:11434/api/generate"
     payload = {
         "model": model_name,
@@ -135,19 +122,19 @@ def query_ollama(prompt: str, model_name: str = "llama3.2:1b") -> str:
         "options": {"temperature": 0.0}
     }
     try:
-        response = requests.post(url, json=payload, timeout=15)
-        response.raise_for_status()
-        return response.json().get("response", "").strip()
+        res = requests.post(url, json=payload, timeout=15)
+        res.raise_for_status()
+        return res.json().get("response", "").strip()
     except Exception as e:
         return f"[Ollama Error: {e}]"
 
 
 # ==========================================
-# 3. Main Entry Point
+# 3. Main Execution
 # ==========================================
 
 def main():
-    parser = argparse.ArgumentParser(description="Transparent PyTorch Transformer Inference matching Ollama")
+    parser = argparse.ArgumentParser(description="Transparent PyTorch Transformer Inference")
     parser.add_argument("prompt", nargs="?", default="What is 2 + 2?", help="Input prompt string")
     parser.add_argument("--compare-ollama", action="store_true", help="Compare output directly with running Ollama server at temperature 0")
     parser.add_argument("--max-tokens", type=int, default=256, help="Maximum number of new tokens to generate")
@@ -164,7 +151,7 @@ def main():
 
     print("\n--- Running Transparent PyTorch Transformer Inference ---")
     print(f"Device: {device} | Prompt: {repr(args.prompt)}")
-    
+
     output_text = run_inference(args.prompt, model, tokenizer, max_new_tokens=args.max_tokens, temperature=args.temperature)
 
     print("\n[PyTorch Output]:")
@@ -189,3 +176,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
