@@ -1,6 +1,5 @@
 import torch
 
-# Standalone Muon Optimizer (Delegates 1D vectors to native AdamW, matrix weights to Newton-Schulz)
 class Muon(torch.optim.Optimizer):
     def __init__(self, params, lr=0.02, momentum=0.95, adamw_lr=1e-3, eps=1e-5):
         matrix_params = [p for p in params if p.ndim >= 2]
@@ -14,7 +13,6 @@ class Muon(torch.optim.Optimizer):
             self.adamw.zero_grad(set_to_none=set_to_none)
 
     def newton_schulz(self, G, steps=5, eps=1e-5):
-        # Newton-Schulz 5th-order polynomial matrix orthogonalization for Muon
         assert G.ndim == 2
         a, b, c = 3.4445, -4.7750, 2.0315
         X = G / (G.norm() + eps)
