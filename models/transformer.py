@@ -57,16 +57,18 @@ class Attention(nn.Module):
         self.n_heads = config['n_heads']
         self.head_dim = config['head_dim']
         self.n_kv_heads = config['n_kv_heads']
+        rope_theta = config['rope_theta']
+        seq_len = config['seq_len']
 
-        theta = 1.0 / (config['rope_theta'] ** (torch.arange(0, config['head_dim'], 2, dtype=torch.float32) / config['head_dim']))
-        seq_idx = torch.arange(config['seq_len'], dtype=torch.float32)
+        theta = 1.0 / (rope_theta ** (torch.arange(0, self.head_dim, 2, dtype=torch.float32, device=device) / self.head_dim))
+        seq_idx = torch.arange(seq_len, dtype=torch.float32, device=device)
         idx_theta = torch.outer(seq_idx, theta)
 
         self.rope_cos = idx_theta.cos().to(dtype).to(device)
         self.rope_sin = idx_theta.sin().to(dtype).to(device)
 
-        self.scale = 1.0 / (self.head_dim ** 0.5)
-        self.causal_mask = torch.ones(0).to(bool).to(device)
+        self.scale = torch.tensor(1.0 / (self.head_dim ** 0.5), dtype=torch.float32, device=device)
+        self.causal_mask = torch.ones(0, dtype=torch.bool, device=device)
 
         self.q_proj = create_param(vocab_dim, vocab_dim)
         self.k_proj = create_param(vocab_dim, kv_dim)
@@ -135,12 +137,16 @@ class Model(nn.Module):
     def __init__(self, **config):
         super().__init__()
         self.config = config
+        vocab_size = config['vocab_size']
+        vocab_dim = config['vocab_dim']
+        n_layers = config['n_layers']
+
         self.model = nn.ModuleDict({
-            'embed_tokens': create_param(config['vocab_size'], config['vocab_dim']),
+            'embed_tokens': create_param(vocab_size, vocab_dim),
             'norm': RMSNorm(**config),
-            'layers': nn.ModuleList(Block(**config) for _ in range(config['n_layers']))
+            'layers': nn.ModuleList(Block(**config) for _ in range(n_layers))
         })
-        self.lm_head = create_param(config['vocab_dim'], config['vocab_size'])
+        self.lm_head = create_param(vocab_dim, vocab_size)
 
     def forward(self, inputs):
         x = self.model.embed_tokens.weight[inputs]
@@ -184,8 +190,13 @@ optimizer = Muon(model.parameters(), lr=config['muon_lr'], adamw_lr=config['adam
 # ==========================================
 # 2. TRAINING STEP (Forward, Loss, Backward & Muon Optimizer)
 # ==========================================
-inputs = torch.randint(0, config['vocab_size'], (config['batch_size'], config['seq_len']), dtype=torch.long, device=device)
-targets = torch.randint(0, config['vocab_size'], (config['batch_size'], config['seq_len']), dtype=torch.long, device=device)
+vocab_size = config['vocab_size']
+batch_size = config['batch_size']
+seq_len = config['seq_len']
+loss_target = config['loss_target']
+
+inputs = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long, device=device)
+targets = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long, device=device)
 
 print(f"--- Starting Training Loop on {device} (Muon Optimizer) ---")
 for step in count(1):
@@ -195,7 +206,7 @@ for step in count(1):
     logits = model(inputs)
 
     # Shifted Causal Loss & Backpropagation
-    shift_logits = logits[:, :-1, :].reshape(-1, config['vocab_size'])
+    shift_logits = logits[:, :-1, :].reshape(-1, vocab_size)
     shift_targets = targets[:, 1:].reshape(-1)
     loss = F.cross_entropy(shift_logits, shift_targets)
     loss.backward()
@@ -206,7 +217,7 @@ for step in count(1):
     loss_val = loss.item()
     print(f"Training Step {step} | Loss: {loss_val:.4f}")
 
-    if loss_val < config['loss_target']:
-        print(f"Training complete! Loss has reached the target threshold of {config['loss_target']}.")
+    if loss_val < loss_target:
+        print(f"Training complete! Loss has reached the target threshold of {loss_target}.")
         model.save("ollama_model.pt")
         break
