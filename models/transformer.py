@@ -41,7 +41,7 @@ muon_beta = 0.95
 loss_target = 1 / 128
 
 # ==========================================
-# 2. Parameters, Buffers & Interoperability Helpers
+# 2. Parameters, Helpers & Custom Muon Optimizer
 # ==========================================
 # Single Model-Level Weights (Embeddings & Unembedding)
 w_emb = nn.Parameter(torch.empty((vocab_size, vocab_dim), dtype=dtype, device=device))
@@ -114,13 +114,6 @@ def load_model(filepath="ollama_model.pt"):
     load_state_dict(sd)
     print(f"Imported model checkpoint from '{filepath}'.")
 
-# Separate 2D/3D Matrix Parameters (Muon) vs 1D Gain Vectors (AdamW)
-matrix_params = [p for p in params if p.ndim >= 2]
-vector_params = [p for p in params if p.ndim < 2]
-
-optimizer = torch.optim.AdamW(vector_params, lr=adamw_lr)
-muon_momentum = {id(p): torch.zeros_like(p) for p in matrix_params}
-
 # Precomputed RoPE Frequency Tables (Cos & Sin)
 theta = 1.0 / (rope_theta ** (torch.arange(0, head_dim, 2, dtype=torch.float32, device=device) / head_dim))
 seq_idx = torch.arange(seq_len, dtype=torch.float32, device=device)
@@ -141,33 +134,82 @@ def apply_rope(x, cos, sin, pivot=pivot):
     out[..., pivot:] = x1 * sin + x2 * cos
     return out
 
-def newton_schulz(G, steps=5, eps=eps):
-    # Newton-Schulz 5th-order polynomial matrix orthogonalization for Muon
-    assert G.ndim == 2
-    a, b, c = 3.4445, -4.7750, 2.0315
-    X = G / (G.norm() + eps)
-    if G.size(0) > G.size(1):
-        X = X.T
-    for _ in range(steps):
-        A = X @ X.T
-        B = b * A + c * A @ A
-        X = a * X + B @ X
-    if G.size(0) > G.size(1):
-        X = X.T
-    return X
+# Standalone Muon Optimizer (Delegates 1D vectors to native AdamW, matrix weights to Newton-Schulz)
+class Muon(torch.optim.Optimizer):
+    def __init__(self, params, lr=muon_lr, momentum=muon_beta, adamw_lr=adamw_lr, eps=eps):
+        matrix_params = [p for p in params if p.ndim >= 2]
+        vector_params = [p for p in params if p.ndim < 2]
+        self.adamw = torch.optim.AdamW(vector_params, lr=adamw_lr, eps=eps) if vector_params else None
+        super().__init__(matrix_params, dict(lr=lr, momentum=momentum, eps=eps))
+
+    def zero_grad(self, set_to_none=True):
+        super().zero_grad(set_to_none=set_to_none)
+        if self.adamw:
+            self.adamw.zero_grad(set_to_none=set_to_none)
+
+    def newton_schulz(self, G, steps=5, eps=eps):
+        # Newton-Schulz 5th-order polynomial matrix orthogonalization for Muon
+        assert G.ndim == 2
+        a, b, c = 3.4445, -4.7750, 2.0315
+        X = G / (G.norm() + eps)
+        if G.size(0) > G.size(1):
+            X = X.T
+        for _ in range(steps):
+            A = X @ X.T
+            B = b * A + c * A @ A
+            X = a * X + B @ X
+        if G.size(0) > G.size(1):
+            X = X.T
+        return X
+
+    def apply_update(self, p, buf, lr, eps=eps):
+        # Orthogonalized gradient update applied to 2D matrices or 3D layer stacks
+        if p.ndim == 3:
+            scale = lr * max(1, p.shape[1] / p.shape[2]) ** 0.5
+            for layer_idx in range(p.shape[0]):
+                update = self.newton_schulz(buf[layer_idx], eps=eps)
+                p[layer_idx].sub_(update, alpha=scale)
+        else:
+            scale = lr * max(1, p.shape[0] / p.shape[1]) ** 0.5
+            update = self.newton_schulz(buf, eps=eps)
+            p.sub_(update, alpha=scale)
+
+    def step_param(self, p, group):
+        if p.grad is None:
+            return
+
+        lr, momentum, eps = group["lr"], group["momentum"], group["eps"]
+        state = self.state[p]
+        if "momentum_buf" not in state:
+            state["momentum_buf"] = torch.zeros_like(p)
+
+        buf = state["momentum_buf"]
+        buf.mul_(momentum).add_(p.grad, alpha=1.0 - momentum)
+        self.apply_update(p, buf, lr, eps)
+
+    @torch.no_grad()
+    def step(self, closure=None):
+        loss = closure() if closure is not None else None
+        if self.adamw:
+            self.adamw.step()
+
+        for group in self.param_groups:
+            for p in group["params"]:
+                self.step_param(p, group)
+
+        return loss
+
+optimizer = Muon(params, lr=muon_lr, adamw_lr=adamw_lr, eps=eps)
 
 # ==========================================
-# 3. TRAINING STEP (Forward, Loss, Backward & Muon/AdamW Optimizer)
+# 3. TRAINING STEP (Forward, Loss, Backward & Muon Optimizer)
 # ==========================================
 inputs = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long, device=device)
 targets = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long, device=device)
 
-print(f"--- Starting Training Loop on {device} (Muon + AdamW) ---")
+print(f"--- Starting Training Loop on {device} (Muon Optimizer) ---")
 for step in count(1):
     optimizer.zero_grad()
-    for p in matrix_params:
-        if p.grad is not None:
-            p.grad.zero_()
 
     # 3.1 Input Lookup
     x = w_emb[inputs]
@@ -214,30 +256,13 @@ for step in count(1):
     loss = F.cross_entropy(shift_logits, shift_targets)
     loss.backward()
 
-    # 3.5 AdamW Step for 1D Gain Vectors
+    # 3.5 Unified Optimizer Step (Muon for 2D/3D Matrices, AdamW for 1D Vectors)
     optimizer.step()
 
-    # 3.6 Muon Step for 2D/3D Weight Matrices
-    with torch.no_grad():
-        for p in matrix_params:
-            if p.grad is None:
-                continue
-            buf = muon_momentum[id(p)]
-            buf.mul_(muon_beta).add_(p.grad, alpha=1.0 - muon_beta)
+    loss_val = loss.item()
+    print(f"Training Step {step} | Loss: {loss_val:.4f}")
 
-            if p.ndim == 3:
-                for layer_idx in range(p.shape[0]):
-                    update = newton_schulz(buf[layer_idx])
-                    p[layer_idx].sub_(update, alpha=muon_lr * max(1, p.shape[1] / p.shape[2]) ** 0.5)
-            else:
-                update = newton_schulz(buf)
-                p.sub_(update, alpha=muon_lr * max(1, p.shape[0] / p.shape[1]) ** 0.5)
-
-    loss = loss.item()
-
-    print(f"Training Step {step} | Loss: {loss:.4f}")
-
-    if loss < loss_target:
+    if loss_val < loss_target:
         print(f"Training complete! Loss has reached the target threshold of {loss_target}.")
         save_model("ollama_model.pt")
         break
