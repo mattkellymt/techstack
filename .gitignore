@@ -8,3 +8,15 @@ wheels/
 
 # Virtual environments
 .venv
+
+# Model checkpoints & large binary files
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.onnx
+*.ckpt
+*.gguf
+*.jsonl
+*.ds_store
+.DS_Store

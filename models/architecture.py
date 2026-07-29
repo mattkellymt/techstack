@@ -1,46 +1,14 @@
 import json
 import math
 import os
-import time
-from itertools import count
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from safetensors.torch import load_file as load_safetensors, save_file as save_safetensors
 
 # ==========================================
-# 1. Configuration & Global Setup
+# 1. Custom Muon Optimizer
 # ==========================================
-
-if torch.cuda.is_available():
-    device = torch.device("cuda")
-elif torch.backends.mps.is_available():
-    device = torch.device("mps")
-else:
-    device = torch.device("cpu")
-
-dtype = torch.float16
-
-config = {
-    'n_layers': 2,
-    'batch_size': 4,
-    'n_heads': 8,
-    'n_kv_heads': 2,
-    'head_dim': 16,
-    'seq_len': 32,
-    'vocab_dim': 128,
-    'kv_dim': 32,
-    'hidden_dim': 256,
-    'vocab_size': 512,
-    'eps': 1 / 1024,
-    'rope_theta': 10_000.0,
-    'muon_lr': 0.01,
-    'momentum': 0.95,
-    'weight_decay': 0.1,
-    'loss_target': 1 / 4096,
-}
-
 
 class Muon(torch.optim.Optimizer):
     def __init__(self, params, lr=1e-3, weight_decay=0.1, momentum=0.95, nesterov=True, eps=1e-7, ns_steps=5):
@@ -107,12 +75,16 @@ class Muon(torch.optim.Optimizer):
             self.step_group(group)
 
 
+# ==========================================
+# 2. Transparent Transformer Components
+# ==========================================
+
 def create_param(*shape):
     return nn.ParameterDict({'weight': nn.Parameter(torch.empty(*shape))})
 
 
 class RMSNorm(nn.Module):
-    def __init__(self, vocab_dim, eps, **kwargs):
+    def __init__(self, vocab_dim, eps=1e-5, **kwargs):
         super().__init__()
         self.eps = eps
         self.weight = nn.Parameter(torch.empty(vocab_dim))
@@ -123,7 +95,7 @@ class RMSNorm(nn.Module):
 
 
 class Attention(nn.Module):
-    def __init__(self, vocab_dim, kv_dim, n_heads, n_kv_heads, head_dim, rope_theta, seq_len, **kwargs):
+    def __init__(self, vocab_dim, kv_dim, n_heads, n_kv_heads, head_dim, rope_theta=500000.0, rope_scaling=None, seq_len=2048, **kwargs):
         super().__init__()
         if n_heads % n_kv_heads != 0:
             raise ValueError("n_heads must be divisible by n_kv_heads")
@@ -131,7 +103,7 @@ class Attention(nn.Module):
             raise ValueError("head_dim must be even")
         expected_kv_dim = n_kv_heads * head_dim
         if kv_dim != expected_kv_dim:
-            raise ValueError("kv_dim must equal n_kv_heads * head_dim")
+            raise ValueError(f"kv_dim ({kv_dim}) must equal n_kv_heads * head_dim ({expected_kv_dim})")
 
         self.n_heads = n_heads
         self.head_dim = head_dim
@@ -139,12 +111,35 @@ class Attention(nn.Module):
         self.q_dim = n_heads * head_dim
         self.scale = 1.0 / (self.head_dim ** 0.5)
 
-        theta = 1.0 / (rope_theta ** (torch.arange(0, self.head_dim, 2, dtype=torch.float32) / self.head_dim))
-        seq_idx = torch.arange(seq_len, dtype=torch.float32)
-        idx_theta = torch.outer(seq_idx, theta)
+        inv_freq = 1.0 / (rope_theta ** (torch.arange(0, self.head_dim, 2, dtype=torch.float32) / self.head_dim))
+        if rope_scaling and rope_scaling.get("rope_type") == "llama3":
+            factor = rope_scaling.get("factor", 32.0)
+            low_freq_factor = rope_scaling.get("low_freq_factor", 1.0)
+            high_freq_factor = rope_scaling.get("high_freq_factor", 4.0)
+            orig_max = rope_scaling.get("original_max_position_embeddings", 8192)
 
-        self.register_buffer('rope_cos', idx_theta.cos(), persistent=False)
-        self.register_buffer('rope_sin', idx_theta.sin(), persistent=False)
+            low_wavelen = orig_max / low_freq_factor
+            high_wavelen = orig_max / high_freq_factor
+
+            new_inv_freq = []
+            for freq in inv_freq:
+                wavelen = 2 * math.pi / freq.item()
+                if wavelen < high_wavelen:
+                    new_inv_freq.append(freq.item())
+                elif wavelen > low_wavelen:
+                    new_inv_freq.append(freq.item() / factor)
+                else:
+                    smooth = (orig_max / wavelen - low_freq_factor) / (high_freq_factor - low_freq_factor)
+                    new_freq = (1 - smooth) * (freq.item() / factor) + smooth * freq.item()
+                    new_inv_freq.append(new_freq)
+            inv_freq = torch.tensor(new_inv_freq, dtype=torch.float32)
+
+        t = torch.arange(seq_len, dtype=torch.float32)
+        freqs = torch.outer(t, inv_freq)
+        emb = torch.cat((freqs, freqs), dim=-1)
+
+        self.register_buffer('rope_cos', emb.cos(), persistent=False)
+        self.register_buffer('rope_sin', emb.sin(), persistent=False)
         self.register_buffer('causal_mask', torch.ones(0, dtype=torch.bool), persistent=False)
 
         self.q_proj = create_param(vocab_dim, self.q_dim)
@@ -154,15 +149,12 @@ class Attention(nn.Module):
 
     def rope(self, x):
         s = x.shape[-2]
-        if s > self.rope_cos.shape[0]:
-            raise ValueError("input sequence length exceeds configured seq_len")
-        cos = self.rope_cos[:s]
-        sin = self.rope_sin[:s]
-        x_even, x_odd = x[..., 0::2], x[..., 1::2]
-        out = torch.empty_like(x)
-        out[..., 0::2] = x_even * cos - x_odd * sin
-        out[..., 1::2] = x_even * sin + x_odd * cos
-        return out
+        cos = self.rope_cos[:s].unsqueeze(0).unsqueeze(0)
+        sin = self.rope_sin[:s].unsqueeze(0).unsqueeze(0)
+        x1 = x[..., :self.head_dim // 2]
+        x2 = x[..., self.head_dim // 2:]
+        rotate_x = torch.cat((-x2, x1), dim=-1)
+        return (x * cos) + (rotate_x * sin)
 
     def forward(self, x):
         b, s, d = x.shape
@@ -245,14 +237,14 @@ class Model(nn.Module):
                 else:
                     nn.init.ones_(p)
 
-    def save(self, path="ollama_model.safetensors"):
+    def save(self, path="llama3_2_1b.safetensors"):
         save_safetensors(self.state_dict(), path)
         config_path = path.rsplit('.', 1)[0] + ".json"
         with open(config_path, "w") as f:
             json.dump(self.config, f, indent=2)
         print(f"Saved model to '{path}' and config to '{config_path}'.")
 
-    def load(self, path="ollama_model.safetensors", device=None):
+    def load(self, path="llama3_2_1b.safetensors", device=None):
         if not os.path.exists(path):
             return False
         dev = device or next(self.parameters()).device
@@ -265,82 +257,3 @@ class Model(nn.Module):
                 self.config = json.load(f)
         print(f"Loaded checkpoint from '{path}' onto {dev}.")
         return True
-
-
-# Remove existing checkpoint if present for a clean initial demonstration
-checkpoint_path = "ollama_model.safetensors"
-
-# Instantiate Model & Load/Initialize Parameters for Training
-model = Model(**config).to(device=device, dtype=dtype)
-model_loaded = model.load(checkpoint_path, device=device)
-if not model_loaded:
-    model.init_params()
-
-# Initialize Custom Muon Optimizer
-optimizer = Muon(
-    (p for p in model.parameters() if p.ndim == 2),
-    lr=config['muon_lr'],
-    momentum=config['momentum'],
-    weight_decay=config['weight_decay'],
-)
-
-# ==========================================
-# 2. Training Loop
-# ==========================================
-
-vocab_size = config['vocab_size']
-batch_size = config['batch_size']
-seq_len = config['seq_len']
-loss_target = config['loss_target']
-
-# Fixed seed for deterministic evaluation data
-torch.manual_seed(42)
-inputs = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long, device=device)
-targets = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long, device=device)
-
-# Evaluate initial loss before entering training loop
-with torch.no_grad():
-    initial_logits = model(inputs)
-    initial_loss = F.cross_entropy(initial_logits[:, :-1, :].reshape(-1, vocab_size), targets[:, 1:].reshape(-1)).item()
-
-print(f"Initial Evaluated Loss: {initial_loss:.6f}")
-
-if initial_loss < loss_target:
-    print(f"Loaded checkpoint already satisfies loss target ({initial_loss:.6f} < {loss_target}). Skipping training loop!")
-else:
-    print(f"--- Starting Training Loop on {device} (Muon Optimizer) ---")
-    t0 = time.time()
-
-    for step in count(1):
-        model.zero_grad()
-
-        # Forward Pass & Output Logits Computation
-        logits = model(inputs)
-
-        # Shifted Causal Loss & Backpropagation
-        shift_logits = logits[:, :-1, :].reshape(-1, vocab_size)
-        shift_targets = targets[:, 1:].reshape(-1)
-        loss = F.cross_entropy(shift_logits, shift_targets)
-        loss.backward()
-
-        # Muon Optimizer Step
-        optimizer.step()
-
-        print(f"Training Step {step} | Loss: {loss:.4f}")
-
-        if torch.isnan(loss) or torch.isinf(loss):
-            print(f"Invalid Loss {loss}. Stopping training.")
-            break
-
-        if loss.item() < loss_target:
-            break
-
-    t1 = time.time()
-    elapsed = t1 - t0
-    params = sum(p.numel() for p in model.parameters() if p.ndim == 2)
-
-    print(f"Parameters: {params}")
-    print(f"Elapsed {elapsed:.2f}s")
-    print(f"Final Loss: {loss.item():.8f}")
-
-    model.save(checkpoint_path)
