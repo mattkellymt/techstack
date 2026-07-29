@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import math
 from itertools import count
 
 # ==========================================
@@ -29,90 +30,82 @@ config = {
     'vocab_size': 512,       
     'eps': 1 / 1024,       
     'rope_theta': 10_000.0,   
-    'adamw_lr': 1e-3,
     'muon_lr': 0.02,
-    'loss_target': 1 / 128,
-    'lr': 0.02,
     'momentum': 0.95,
-    'adamw_lr': 1e-3,
+    'weight_decay': 0.1,
+    'loss_target': 1 / 128,
 }
 
 class Muon(torch.optim.Optimizer):
-    def __init__(self, params, lr, momentum, adamw_lr, eps, **kwargs):
-        matrix_params = [p for p in params if p.ndim >= 2]
-        vector_params = [p for p in params if p.ndim < 2]
-        self.adamw = torch.optim.AdamW(vector_params, lr=adamw_lr, eps=eps) if vector_params else None
-        super().__init__(matrix_params, dict(lr=lr, momentum=momentum, eps=eps))
-        self.eps = eps 
-        self.steps = 5
+    def __init__(self, params, lr=1e-3, weight_decay=0.1, momentum=0.95, nesterov=True, eps=1e-7, ns_steps=5):
+        super().__init__(params, dict(
+            lr=lr,
+            weight_decay=weight_decay,
+            momentum=momentum,
+            nesterov=nesterov,
+            eps=eps,
+            ns_steps=ns_steps,
+        ))
 
-    def zero_grad(self, set_to_none=True):
-        super().zero_grad(set_to_none=set_to_none)
-        if self.adamw:
-            self.adamw.zero_grad(set_to_none=set_to_none)
+    def addmm(self, input, mat1, mat2, beta=1, alpha=1):
+        output = beta * input + alpha * (mat1 @ mat2)
+        return output
 
-    def newton_schulz(self, G):
-        assert G.ndim == 2
+    def newton_schulz_step(self, update, a, b, c):
+        gram = update @ update.T
+        gram_update = self.addmm(gram, gram, gram, beta=b, alpha=c)
+        next_update = self.addmm(update, gram_update, update, beta=a)
+        return next_update
+
+    def newton_schulz(self, grad, eps, steps):
         a, b, c = 3.4445, -4.7750, 2.0315
-        X = G / (G.norm() + self.eps)
-        if G.size(0) > G.size(1):
-            X = X.T
-        for _ in range(self.steps):
-            A = X @ X.T
-            B = b * A + c * A @ A
-            X = a * X + B @ X
-        if G.size(0) > G.size(1):
-            X = X.T
-        return X
-
-    def apply_update_2d(self, p, buf, lr):
-        scale = lr * max(1, p.shape[0] / p.shape[1]) ** 0.5
-        update = self.newton_schulz(buf)
-        p.sub_(update, alpha=scale)
-
-    def apply_update_3d(self, p, buf, lr):
-        for layer_idx in range(p.shape[0]):
-            self.apply_update_2d(p[layer_idx], buf[layer_idx], lr)
-
-    def apply_update(self, p, buf, lr):
-        match p.ndim:
-            case 2:
-                self.apply_update_2d(p, buf, lr)
-            case 3:
-                self.apply_update_3d(p, buf, lr)
-            case _:
-                raise ValueError(f"Muon optimizer only supports 2D or 3D parameters, got ndim={p.ndim}")
+        update = grad.bfloat16()
+        transposed = grad.size(0) > grad.size(1)
+        if transposed:
+            update = update.T
+        update.div_(update.norm().clamp(min=eps))
+        for _ in range(steps):
+            update = self.newton_schulz_step(update, a, b, c)
+        if transposed:
+            update = update.T
+        return update
 
     def step_param(self, p, group):
-        if p.grad is None:
+        lr = group['lr']
+        weight_decay = group['weight_decay']
+        momentum = group['momentum']
+        nesterov = group['nesterov']
+        eps = group['eps']
+        ns_steps = group['ns_steps']
+        grad = p.grad
+        if p.ndim != 2:
+            raise ValueError("Muon only supports 2D parameters")
+        if grad is None:
             return
-
-        lr, momentum, eps = group["lr"], group["momentum"], group["eps"]
         state = self.state[p]
-        if "momentum_buf" not in state:
-            state["momentum_buf"] = torch.zeros_like(p)
-
-        buf = state["momentum_buf"]
-        buf.mul_(momentum).add_(p.grad, alpha=1.0 - momentum)
-        self.apply_update(p, buf, lr)
+        if 'momentum_buffer' not in state:
+            state['momentum_buffer'] = torch.zeros_like(grad)
+        buf = state['momentum_buffer']
+        buf.lerp_(grad, 1 - momentum)
+        update = grad.lerp(buf, momentum) if nesterov else buf
+        update = self.newton_schulz(update, eps, ns_steps)
+        adjusted_lr = lr * math.sqrt(max(1, p.shape[0] / p.shape[1]))
+        p.mul_(1 - lr * weight_decay)
+        p.add_(update, alpha=-adjusted_lr)
 
     def step_group(self, group):
-        for p in group["params"]:
+        params = group['params']
+        for p in params:
             self.step_param(p, group)
 
     @torch.no_grad()
-    def step(self, closure=None):
-        loss = closure() if closure is not None else None
-        if self.adamw:
-            self.adamw.step()
-
+    def step(self):
         for group in self.param_groups:
             self.step_group(group)
 
-        return loss
-
 def create_param(*shape):
-    return nn.ParameterDict({'weight': nn.Parameter(torch.empty(*shape))})
+    param = nn.ParameterDict({'weight': nn.Parameter(torch.empty(*shape))})
+    return param
 
 class RMSNorm(nn.Module):
     def __init__(self, vocab_dim, eps, **kwargs):
@@ -122,7 +115,8 @@ class RMSNorm(nn.Module):
 
     def forward(self, x):
         variance = x.pow(2).mean(dim=-1, keepdim=True)
-        return (x * torch.rsqrt(variance + self.eps)) * self.weight
+        output = (x * torch.rsqrt(variance + self.eps)) * self.weight
+        return output
 
 class Attention(nn.Module):
     def __init__(self, vocab_dim, kv_dim, **kwargs):
@@ -179,7 +173,8 @@ class Attention(nn.Module):
         attn = torch.softmax(attn, dim=-1)
         
         attn_out = torch.matmul(attn, v).transpose(1, 2).reshape(b, s, d)
-        return torch.matmul(attn_out, self.o_proj.weight)
+        output = torch.matmul(attn_out, self.o_proj.weight)
+        return output
 
 class MLP(nn.Module):
     def __init__(self, vocab_dim, hidden_dim, **kwargs):
@@ -191,7 +186,8 @@ class MLP(nn.Module):
     def forward(self, x):
         gate = torch.matmul(x, self.gate_proj.weight)
         up = torch.matmul(x, self.up_proj.weight)
-        return torch.matmul(F.silu(gate) * up, self.down_proj.weight)
+        output = torch.matmul(F.silu(gate) * up, self.down_proj.weight)
+        return output
 
 class Block(nn.Module):
     def __init__(self, **kwargs):
@@ -226,7 +222,8 @@ class Model(nn.Module):
         for layer in self.model.layers:
             x = layer(x)
         x = self.model.norm(x)
-        return torch.matmul(x, self.lm_head.weight)
+        output = torch.matmul(x, self.lm_head.weight)
+        return output
 
     def init_params(self):
         with torch.no_grad():
@@ -258,7 +255,12 @@ model = Model(**config).to(device=device, dtype=dtype)
 model.init_params()
 
 # Initialize Custom Muon Optimizer
-optimizer = Muon(model.parameters(), **config)
+optimizer = Muon(
+    (p for p in model.parameters() if p.ndim == 2),
+    lr=config['muon_lr'],
+    momentum=config['momentum'],
+    weight_decay=config['weight_decay'],
+)
 
 # ==========================================
 # 2. TRAINING STEP (Forward, Loss, Backward & Muon Optimizer)
@@ -273,7 +275,7 @@ targets = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long, 
 
 print(f"--- Starting Training Loop on {device} (Muon Optimizer) ---")
 for step in count(1):
-    optimizer.zero_grad()
+    model.zero_grad()
 
     # Forward Pass & Output Logits Computation
     logits = model(inputs)
@@ -284,7 +286,7 @@ for step in count(1):
     loss = F.cross_entropy(shift_logits, shift_targets)
     loss.backward()
 
-    # Unified Optimizer Step (Muon for 2D Matrices, AdamW for 1D Vectors)
+    # Muon Optimizer Step
     optimizer.step()
 
     loss_val = loss.item()
