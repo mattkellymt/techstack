@@ -264,7 +264,8 @@ class Model(nn.Module):
 
 # Instantiate Model & Initialize Parameters for Training
 model = Model(**config).to(device=device, dtype=dtype)
-model.init_params()
+# model.init_params()
+model.load("ollama_model.pt", device=device)
 
 # Initialize Custom Muon Optimizer
 optimizer = Muon(
