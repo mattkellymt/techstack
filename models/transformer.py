@@ -3,44 +3,57 @@ import torch.nn as nn
 import torch.nn.functional as F
 from itertools import count
 
-# Standard precision for training parameter storage
+# ==========================================
+# 1. Device, Hyperparameters & Constants
+# ==========================================
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+elif torch.backends.mps.is_available():
+    device = torch.device("mps")
+else:
+    device = torch.device("cpu")
+
 dtype = torch.float32
 
-# ==========================================
-# 1. Hyperparameters & Constants
-# ==========================================
-batch_size = 2
+# Model Architecture (All dimensions are unique powers of 2 > 1)
 n_layers = 2
-dim = 256
-n_heads = 4
-head_dim = dim // n_heads
-hidden_dim = int(dim * 8 / 3)  # 682 (LLaMA SwiGLU hidden dim)
-vocab_size = 4069
-seq_len = 120
+batch_size = 4
+n_heads = 8
+head_dim = 16
+seq_len = 32
+vocab_dim = n_heads * head_dim  # 128 (8 * 16)
+hidden_dim = 256
+vocab_size = 512
+eps = 1 / 100_000  # Canonical LLaMA RMSNorm epsilon (1e-5)
 
+# Derived Mathematical Constants
 pivot = head_dim // 2
 scale = 1.0 / (head_dim ** 0.5)
+
+# Training Hyperparameters
+lr = 1e-3
+loss_target = 1 / 128
 
 # ==========================================
 # 2. Parameters & Precomputed Buffers
 # ==========================================
 # Single Model-Level Weights (Embeddings & Unembedding)
-w_emb = nn.Parameter(torch.empty((vocab_size, dim), dtype=dtype))
-w_unemb = nn.Parameter(torch.empty((dim, vocab_size), dtype=dtype))
-norm_final = nn.Parameter(torch.ones(dim, dtype=dtype))
+w_emb = nn.Parameter(torch.empty((vocab_size, vocab_dim), dtype=dtype, device=device))
+w_unemb = nn.Parameter(torch.empty((vocab_dim, vocab_size), dtype=dtype, device=device))
+norm_final = nn.Parameter(torch.ones(vocab_dim, dtype=dtype, device=device))
 
 # Multi-Layer Stacked Weights (3D Tensors prepended with n_layers)
-wq = nn.Parameter(torch.empty((n_layers, dim, dim), dtype=dtype))
-wk = nn.Parameter(torch.empty((n_layers, dim, dim), dtype=dtype))
-wv = nn.Parameter(torch.empty((n_layers, dim, dim), dtype=dtype))
-wo = nn.Parameter(torch.empty((n_layers, dim, dim), dtype=dtype))
+wq = nn.Parameter(torch.empty((n_layers, vocab_dim, vocab_dim), dtype=dtype, device=device))
+wk = nn.Parameter(torch.empty((n_layers, vocab_dim, vocab_dim), dtype=dtype, device=device))
+wv = nn.Parameter(torch.empty((n_layers, vocab_dim, vocab_dim), dtype=dtype, device=device))
+wo = nn.Parameter(torch.empty((n_layers, vocab_dim, vocab_dim), dtype=dtype, device=device))
 
-w_gate = nn.Parameter(torch.empty((n_layers, dim, hidden_dim), dtype=dtype))
-w_up = nn.Parameter(torch.empty((n_layers, dim, hidden_dim), dtype=dtype))
-w_down = nn.Parameter(torch.empty((n_layers, hidden_dim, dim), dtype=dtype))
+w_gate = nn.Parameter(torch.empty((n_layers, vocab_dim, hidden_dim), dtype=dtype, device=device))
+w_up = nn.Parameter(torch.empty((n_layers, vocab_dim, hidden_dim), dtype=dtype, device=device))
+w_down = nn.Parameter(torch.empty((n_layers, hidden_dim, vocab_dim), dtype=dtype, device=device))
 
-norm_attn = nn.Parameter(torch.ones((n_layers, dim), dtype=dtype))
-norm_ffn = nn.Parameter(torch.ones((n_layers, dim), dtype=dtype))
+norm_attn = nn.Parameter(torch.ones((n_layers, vocab_dim), dtype=dtype, device=device))
+norm_ffn = nn.Parameter(torch.ones((n_layers, vocab_dim), dtype=dtype, device=device))
 
 # Short-circuit Weight Initialization
 params = [w_emb, w_unemb, wq, wk, wv, wo, w_gate, w_up, w_down, norm_attn, norm_ffn, norm_final]
@@ -50,18 +63,18 @@ for p in params:
     nn.init.normal_(p, mean=0.0, std=0.02)
 
 # Optimizer Setup
-optimizer = torch.optim.AdamW(params, lr=1e-3)
+optimizer = torch.optim.AdamW(params, lr=lr)
 
 # Precomputed RoPE Frequency Tables (Cos & Sin)
-theta = 1.0 / (10000.0 ** (torch.arange(0, head_dim, 2, dtype=torch.float32) / head_dim))
-seq_idx = torch.arange(seq_len, dtype=torch.float32)
+theta = 1.0 / (10000.0 ** (torch.arange(0, head_dim, 2, dtype=torch.float32, device=device) / head_dim))
+seq_idx = torch.arange(seq_len, dtype=torch.float32, device=device)
 idx_theta = torch.outer(seq_idx, theta)  # Shape: (seq_len, pivot)
 rope_cos, rope_sin = idx_theta.cos().to(dtype), idx_theta.sin().to(dtype)
 
 # Precomputed Causal Mask Buffer
-causal_mask = torch.triu(torch.full((seq_len, seq_len), float('-inf'), dtype=dtype), diagonal=1)
+causal_mask = torch.triu(torch.full((seq_len, seq_len), float('-inf'), dtype=dtype, device=device), diagonal=1)
 
-def rms_norm(x, w, eps=1e-5):
+def rms_norm(x, w, eps=eps):
     variance = x.pow(2).mean(dim=-1, keepdim=True)
     return (x * torch.rsqrt(variance + eps)) * w
 
@@ -75,11 +88,10 @@ def apply_rope(x, cos, sin, pivot=pivot):
 # ==========================================
 # 3. TRAINING STEP (Forward, Loss, Backward & Optimizer)
 # ==========================================
-inputs = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long)
-targets = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long)
-loss_target = 1 / 128
+inputs = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long, device=device)
+targets = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long, device=device)
 
-print("--- Starting Training Loop ---")
+print(f"--- Starting Training Loop on {device} ---")
 for step in count(1):
     optimizer.zero_grad()
 
@@ -103,7 +115,7 @@ for step in count(1):
         attn = torch.softmax(attn + causal_mask, dim=-1)
 
         # Output Projection & Attention Residual
-        attn_out = torch.matmul(attn, v).transpose(1, 2).reshape(batch_size, seq_len, dim)
+        attn_out = torch.matmul(attn, v).transpose(1, 2).reshape(batch_size, seq_len, vocab_dim)
         x = x + torch.matmul(attn_out, wo[i])
 
         # SwiGLU FFN Pre-Norm, Projection & FFN Residual
