@@ -15,20 +15,23 @@ else:
 
 dtype = torch.float32
 
-# Model Architecture (All dimensions are unique powers of 2 > 1)
+# Model Architecture
 n_layers = 2
 batch_size = 4
 n_heads = 8
+n_kv_heads = 2  # Set n_kv_heads = 8 for MHA (1:1), 1 for MQA (8:1), 2 for GQA (4:1)
 head_dim = 16
 seq_len = 32
 vocab_dim = n_heads * head_dim  # 128 (8 * 16)
+kv_dim = n_kv_heads * head_dim  # 32 (2 * 16)
 hidden_dim = 256
 vocab_size = 512
-eps = 1 / 100_000  # Canonical LLaMA RMSNorm epsilon (1e-5)
+eps = 1 / 100_000
 
 # Derived Mathematical Constants
 pivot = head_dim // 2
 scale = 1.0 / (head_dim ** 0.5)
+n_rep = n_heads // n_kv_heads
 
 # Training Hyperparameters
 lr = 1e-3
@@ -44,8 +47,8 @@ norm_final = nn.Parameter(torch.ones(vocab_dim, dtype=dtype, device=device))
 
 # Multi-Layer Stacked Weights (3D Tensors prepended with n_layers)
 wq = nn.Parameter(torch.empty((n_layers, vocab_dim, vocab_dim), dtype=dtype, device=device))
-wk = nn.Parameter(torch.empty((n_layers, vocab_dim, vocab_dim), dtype=dtype, device=device))
-wv = nn.Parameter(torch.empty((n_layers, vocab_dim, vocab_dim), dtype=dtype, device=device))
+wk = nn.Parameter(torch.empty((n_layers, vocab_dim, kv_dim), dtype=dtype, device=device))
+wv = nn.Parameter(torch.empty((n_layers, vocab_dim, kv_dim), dtype=dtype, device=device))
 wo = nn.Parameter(torch.empty((n_layers, vocab_dim, vocab_dim), dtype=dtype, device=device))
 
 w_gate = nn.Parameter(torch.empty((n_layers, vocab_dim, hidden_dim), dtype=dtype, device=device))
@@ -103,12 +106,17 @@ for step in count(1):
         # Attention Pre-Norm & Q, K, V Projections
         x_norm = rms_norm(x, norm_attn[i])
         q = torch.matmul(x_norm, wq[i]).reshape(batch_size, seq_len, n_heads, head_dim).transpose(1, 2)
-        k = torch.matmul(x_norm, wk[i]).reshape(batch_size, seq_len, n_heads, head_dim).transpose(1, 2)
-        v = torch.matmul(x_norm, wv[i]).reshape(batch_size, seq_len, n_heads, head_dim).transpose(1, 2)
+        k = torch.matmul(x_norm, wk[i]).reshape(batch_size, seq_len, n_kv_heads, head_dim).transpose(1, 2)
+        v = torch.matmul(x_norm, wv[i]).reshape(batch_size, seq_len, n_kv_heads, head_dim).transpose(1, 2)
 
         # Apply RoPE to Q and K
         q = apply_rope(q, rope_cos, rope_sin)
         k = apply_rope(k, rope_cos, rope_sin)
+
+        # GQA / MQA Head Expansion
+        if n_rep > 1:
+            k = k.repeat_interleave(n_rep, dim=1)
+            v = v.repeat_interleave(n_rep, dim=1)
 
         # Parallel Causal Attention
         attn = torch.matmul(q, k.transpose(-2, -1)) * scale
