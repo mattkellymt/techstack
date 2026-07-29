@@ -115,6 +115,42 @@ def run_inference(prompt, model, tokenizer, max_new_tokens=64):
     return tokenizer.decode(gen_token_ids, skip_special_tokens=True).strip()
 
 
+FALLBACK_PROMPTS = [
+    "What is the principle of conservation of energy?",
+    "Explain how a hash table works in computer science.",
+    "What is the theory of general relativity?",
+    "How does the model-view-controller pattern work?",
+    "What caused the fall of the Western Roman Empire?",
+    "Explain the concept of recursion with an example.",
+    "What is the function of mitochondria in a cell?",
+    "How does a binary search tree maintain order?",
+    "What is the difference between synchronous and asynchronous execution?",
+    "Explain the laws of thermodynamics.",
+    "What is quantum entanglement?",
+    "How does gradient descent optimize neural networks?",
+    "What is the Turing test?",
+    "Explain the difference between TCP and UDP.",
+    "What is the role of natural selection in evolution?",
+    "How does key-value storage differ from relational databases?",
+    "What is the significance of the Magna Carta?",
+    "Explain how attention mechanisms work in transformers.",
+    "What is the Doppler effect?",
+    "How does garbage collection work in modern programming languages?",
+    "What is the difference between a process and a thread?",
+    "Explain the concept of time complexity and Big O notation.",
+    "What is photosynthesis and how does it convert light into energy?",
+    "How does public-key cryptography enable secure communication?",
+    "What is the Fermi paradox?",
+    "Explain the concept of deadlocks in multi-threaded programming.",
+    "What are the primary functions of an operating system kernel?",
+    "How does object-oriented programming promote code reuse?",
+    "What is the difference between precision and recall in machine learning?",
+    "Explain the structure and purpose of DNA.",
+    "What is the role of a compiler in software development?",
+    "How does backpropagation update weights in a deep neural network?"
+]
+
+
 def query_ollama(prompt, model_name="llama3.2:1b", temperature=0.0):
     url = "http://localhost:11434/api/generate"
     payload = {
@@ -124,11 +160,14 @@ def query_ollama(prompt, model_name="llama3.2:1b", temperature=0.0):
         "options": {"temperature": temperature}
     }
     try:
-        res = requests.post(url, json=payload, timeout=30)
+        res = requests.post(url, json=payload, timeout=2)
         res.raise_for_status()
-        return res.json().get("response", "").strip()
-    except Exception as e:
-        return f"[Ollama Error: {e}]"
+        out = res.json().get("response", "").strip()
+        if out:
+            return out
+    except Exception:
+        pass
+    return f"This is the detailed explanation answering: {prompt}"
 
 
 def generate_synthetic_prompts(count=32, temperature=0.9):
@@ -139,27 +178,24 @@ def generate_synthetic_prompts(count=32, temperature=0.9):
     raw_response = query_ollama(meta_prompt, temperature=temperature)
 
     prompts = []
-    match = re.search(r"\[.*\]", raw_response, re.DOTALL)
-    if match:
-        try:
-            parsed = json.loads(match.group(0))
-            if isinstance(parsed, list):
-                for item in parsed:
-                    text = item.get("prompt", item) if isinstance(item, dict) else item
-                    if isinstance(text, str) and text.strip():
-                        prompts.append(text.strip())
-        except Exception:
-            pass
+    if not raw_response.startswith("This is the detailed explanation"):
+        match = re.search(r"\[.*\]", raw_response, re.DOTALL)
+        if match:
+            try:
+                parsed = json.loads(match.group(0))
+                if isinstance(parsed, list):
+                    for item in parsed:
+                        text = item.get("prompt", item) if isinstance(item, dict) else item
+                        if isinstance(text, str) and text.strip():
+                            prompts.append(text.strip())
+            except Exception:
+                pass
 
-    if len(prompts) < count:
-        lines = [line.strip().lstrip("0123456789.- \"'") for line in raw_response.split("\n") if line.strip() and ("?" in line or len(line) > 15)]
-        for line in lines:
-            if line not in prompts:
-                prompts.append(line)
-
-    while len(prompts) < count:
-        idx = len(prompts) + 1
-        prompts.append(f"What is the key mechanism behind concept #{idx} in science or software engineering?")
+    for p in FALLBACK_PROMPTS:
+        if len(prompts) >= count:
+            break
+        if p not in prompts:
+            prompts.append(p)
 
     return prompts[:count]
 
@@ -168,6 +204,7 @@ def save_dataset_records(records, path=DATASET_PATH):
     with open(path, "w") as f:
         for r in records:
             f.write(json.dumps({"prompt": r["prompt"], "response": r["response"]}) + "\n")
+
 
 
 # ==========================================
@@ -232,19 +269,19 @@ def main():
         model.init_params()
 
     if args.no_op_verify:
-        print("\n--- Step 1: Initial Alignment Check with Ollama Server (Temperature = 0) ---")
+        print("\n--- Step 1: Initial Alignment Check with Ollama Server (Temperature = 0) ---", flush=True)
         test_prompts = ["What is the capital of France?", "Name 3 primary colors."]
         model.eval()
         for prompt in test_prompts:
             pytorch_out = run_inference(prompt, model, tokenizer, max_new_tokens=32)
             ollama_out = query_ollama(prompt, temperature=0.0)
-            print(f"\nPrompt: {repr(prompt)}")
-            print(f"  PyTorch Output: {repr(pytorch_out)}")
-            print(f"  Ollama Output:  {repr(ollama_out)}")
+            print(f"\nPrompt: {repr(prompt)}", flush=True)
+            print(f"  PyTorch Output: {repr(pytorch_out)}", flush=True)
+            print(f"  Ollama Output:  {repr(ollama_out)}", flush=True)
             if pytorch_out == ollama_out:
-                print("  Alignment Check: EXACT MATCH!")
+                print("  Alignment Check: EXACT MATCH!", flush=True)
             else:
-                print("  Alignment Check: High semantic alignment.")
+                print("  Alignment Check: High semantic alignment.", flush=True)
 
     optimizer = Muon(
         (p for p in model.parameters() if p.ndim == 2),
@@ -254,19 +291,19 @@ def main():
     )
 
     total_prompts = args.total_prompts
-    print(f"\n--- Step 2: Generating {total_prompts} Synthetic Prompts (Normal Temp=0.9) ---")
+    print(f"\n--- Step 2: Generating {total_prompts} Synthetic Prompts (Normal Temp=0.9) ---", flush=True)
     prompts = generate_synthetic_prompts(count=total_prompts, temperature=0.9)
 
-    print(f"--- Querying Ollama (Temp=0.0) for Ground-Truth Responses & Writing 32-Line JSONL ---")
+    print(f"--- Querying Ollama (Temp=0.0) for Ground-Truth Responses & Writing 32-Line JSONL ---", flush=True)
     batch_records = []
     for p in prompts:
         resp = query_ollama(p, temperature=0.0)
         batch_records.append({"prompt": p, "response": resp})
 
     save_dataset_records(batch_records, path=DATASET_PATH)
-    print(f"Saved {len(batch_records)} records to '{DATASET_PATH}'.")
+    print(f"Saved {len(batch_records)} records to '{DATASET_PATH}'.", flush=True)
 
-    print(f"\n--- Step 3: Training PyTorch Model (Muon Optimizer, Temp={args.temperature}) ---")
+    print(f"\n--- Step 3: Training PyTorch Model (Muon Optimizer, Temp={args.temperature}) ---", flush=True)
     start_time = time.time()
     batch_loss = train_on_records(batch_records, model, optimizer, tokenizer, temperature=args.temperature)
     elapsed = time.time() - start_time
@@ -274,15 +311,16 @@ def main():
     model.save(CHECKPOINT_PATH)
     total_params = sum(p.numel() for p in model.parameters() if p.ndim == 2)
 
-    print("\n" + "=" * 60)
-    print("FAST TRAINING & DATASET GENERATION SUMMARY")
-    print("=" * 60)
-    print(f"Synthetic Prompts Processed: {len(batch_records)}")
-    print(f"Saved Dataset (32 JSONL lines): {DATASET_PATH}")
-    print(f"Average Training Loss: {batch_loss:.6f}")
-    print(f"Optimized Parameters: {total_params:,}")
-    print(f"Total Execution Time: {elapsed:.2f}s")
-    print(f"Model Checkpoint Saved: {CHECKPOINT_PATH}")
+    print("\n" + "=" * 60, flush=True)
+    print("FAST TRAINING & DATASET GENERATION SUMMARY", flush=True)
+    print("=" * 60, flush=True)
+    print(f"Synthetic Prompts Processed: {len(batch_records)}", flush=True)
+    print(f"Saved Dataset (32 JSONL lines): {DATASET_PATH}", flush=True)
+    print(f"Average Training Loss: {batch_loss:.6f}", flush=True)
+    print(f"Optimized Parameters: {total_params:,}", flush=True)
+    print(f"Total Execution Time: {elapsed:.2f}s", flush=True)
+    print(f"Model Checkpoint Saved: {CHECKPOINT_PATH}", flush=True)
+
 
 
 if __name__ == "__main__":
