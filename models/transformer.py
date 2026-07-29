@@ -315,7 +315,7 @@ for step in count(1):
 
 stop_time = time.time()
 elapsed_time = stop_time - start_time
-total_params = sum(p.numel() for p in model.parameters() if p.ndim == 2)
+total_params = sum(p.numel() for p in model.parameters())
 
 print(f"Parameters: {total_params}")
 print(f"Elapsed {elapsed_time:.2f}")
