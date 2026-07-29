@@ -217,7 +217,8 @@ def train_on_records(records, model, optimizer, tokenizer, temperature=0.0):
     total_loss = 0.0
     valid_batches = 0
 
-    for item in records:
+    optimizer.zero_grad()
+    for idx, item in enumerate(records, 1):
         messages = [
             {"role": "user", "content": item["prompt"]},
             {"role": "assistant", "content": item["response"]}
@@ -233,19 +234,24 @@ def train_on_records(records, model, optimizer, tokenizer, temperature=0.0):
 
         inputs, targets = full_ids[:, :-1], full_ids[:, 1:]
 
-        optimizer.zero_grad()
         logits = model(inputs)
         if temperature > 0.0:
             logits = logits / temperature
 
         loss = F.cross_entropy(logits.reshape(-1, vocab_size), targets.reshape(-1))
-        loss.backward()
-        optimizer.step()
+        scaled_loss = loss / len(records)
+        scaled_loss.backward()
 
         total_loss += loss.item()
         valid_batches += 1
+        print(f"  [Sample {idx}/{len(records)}] Loss: {loss.item():.4f}", flush=True)
+
+    optimizer.step()
+    optimizer.zero_grad()
 
     return total_loss / max(1, valid_batches)
+
+
 
 
 # ==========================================
