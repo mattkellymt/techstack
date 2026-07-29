@@ -16,18 +16,18 @@ else:
 dtype = torch.float32
 
 # Model Architecture (All dimensions are unique powers of 2 > 1)
-n_layers = 2
+n_layers = 2            # Ollama GGUF: llama.block_count
 batch_size = 4
-n_heads = 8
-n_kv_heads = 2  # Set n_kv_heads = 8 for MHA (1:1), 1 for MQA (8:1), 2 for GQA (4:1)
-head_dim = 16
-seq_len = 32
-vocab_dim = n_heads * head_dim  # 128 (8 * 16)
+n_heads = 8             # Ollama GGUF: llama.attention.head_count
+n_kv_heads = 2          # Ollama GGUF: llama.attention.head_count_kv (MHA=8, MQA=1, GQA=2)
+head_dim = 16           # Head Dimension (vocab_dim // n_heads)
+seq_len = 32            # Ollama GGUF: llama.context_length
+vocab_dim = n_heads * head_dim  # 128 (8 * 16) - Ollama GGUF: llama.embedding_length
 kv_dim = n_kv_heads * head_dim  # 32 (2 * 16)
-hidden_dim = 256
-vocab_size = 512
-eps = 1 / 100_000
-rope_theta = 10_000.0  # Canonical LLaMA RoPE frequency base (10,000.0 for LLaMA 2, 500,000.0 for LLaMA 3)
+hidden_dim = 256        # Ollama GGUF: llama.feed_forward_length
+vocab_size = 512        # Ollama GGUF: llama.vocab_size
+eps = 1 / 100_000       # Ollama GGUF: llama.attention.layer_norm_rms_epsilon
+rope_theta = 10_000.0   # Ollama GGUF: llama.rope.freq_base
 
 # Derived Mathematical Constants
 pivot = head_dim // 2
@@ -41,7 +41,7 @@ muon_beta = 0.95
 loss_target = 1 / 128
 
 # ==========================================
-# 2. Parameters, Buffers & Optimizer Setup
+# 2. Parameters, Buffers & Interoperability Helpers
 # ==========================================
 # Single Model-Level Weights (Embeddings & Unembedding)
 w_emb = nn.Parameter(torch.empty((vocab_size, vocab_dim), dtype=dtype, device=device))
@@ -67,6 +67,52 @@ for p in params:
     if p.ndim <= 1:
         continue
     nn.init.normal_(p, mean=0.0, std=0.02)
+
+# Canonical LLaMA / Ollama State Dict Exporter & Importer (Two-Way Interoperability)
+def to_state_dict():
+    sd = {
+        "model.embed_tokens.weight": w_emb.detach().clone(),
+        "model.norm.weight": norm_final.detach().clone(),
+        "lm_head.weight": w_unemb.detach().T.clone(),
+    }
+    for i in range(n_layers):
+        sd[f"model.layers.{i}.input_layernorm.weight"] = norm_attn[i].detach().clone()
+        sd[f"model.layers.{i}.self_attn.q_proj.weight"] = wq[i].detach().T.clone()
+        sd[f"model.layers.{i}.self_attn.k_proj.weight"] = wk[i].detach().T.clone()
+        sd[f"model.layers.{i}.self_attn.v_proj.weight"] = wv[i].detach().T.clone()
+        sd[f"model.layers.{i}.self_attn.o_proj.weight"] = wo[i].detach().T.clone()
+        sd[f"model.layers.{i}.post_attention_layernorm.weight"] = norm_ffn[i].detach().clone()
+        sd[f"model.layers.{i}.mlp.gate_proj.weight"] = w_gate[i].detach().T.clone()
+        sd[f"model.layers.{i}.mlp.up_proj.weight"] = w_up[i].detach().T.clone()
+        sd[f"model.layers.{i}.mlp.down_proj.weight"] = w_down[i].detach().T.clone()
+    return sd
+
+def load_state_dict(sd):
+    with torch.no_grad():
+        w_emb.copy_(sd["model.embed_tokens.weight"])
+        norm_final.copy_(sd["model.norm.weight"])
+        w_unemb.copy_(sd["lm_head.weight"].T)
+
+        for i in range(n_layers):
+            norm_attn[i].copy_(sd[f"model.layers.{i}.input_layernorm.weight"])
+            wq[i].copy_(sd[f"model.layers.{i}.self_attn.q_proj.weight"].T)
+            wk[i].copy_(sd[f"model.layers.{i}.self_attn.k_proj.weight"].T)
+            wv[i].copy_(sd[f"model.layers.{i}.self_attn.v_proj.weight"].T)
+            wo[i].copy_(sd[f"model.layers.{i}.self_attn.o_proj.weight"].T)
+            norm_ffn[i].copy_(sd[f"model.layers.{i}.post_attention_layernorm.weight"])
+            w_gate[i].copy_(sd[f"model.layers.{i}.mlp.gate_proj.weight"].T)
+            w_up[i].copy_(sd[f"model.layers.{i}.mlp.up_proj.weight"].T)
+            w_down[i].copy_(sd[f"model.layers.{i}.mlp.down_proj.weight"].T)
+
+def save_model(filepath="ollama_model.pt"):
+    sd = to_state_dict()
+    torch.save(sd, filepath)
+    print(f"Exported model checkpoint to '{filepath}' ({len(sd)} weight tensors).")
+
+def load_model(filepath="ollama_model.pt"):
+    sd = torch.load(filepath, map_location=device, weights_only=True)
+    load_state_dict(sd)
+    print(f"Imported model checkpoint from '{filepath}'.")
 
 # Separate 2D/3D Matrix Parameters (Muon) vs 1D Gain Vectors (AdamW)
 matrix_params = [p for p in params if p.ndim >= 2]
@@ -193,4 +239,5 @@ for step in count(1):
 
     if loss < loss_target:
         print(f"Training complete! Loss has reached the target threshold of {loss_target}.")
+        save_model("ollama_model.pt")
         break
