@@ -27,6 +27,7 @@ kv_dim = n_kv_heads * head_dim  # 32 (2 * 16)
 hidden_dim = 256
 vocab_size = 512
 eps = 1 / 100_000
+rope_theta = 10_000.0  # Canonical LLaMA RoPE frequency base (10,000.0 for LLaMA 2, 500,000.0 for LLaMA 3)
 
 # Derived Mathematical Constants
 pivot = head_dim // 2
@@ -75,7 +76,7 @@ optimizer = torch.optim.AdamW(vector_params, lr=adamw_lr)
 muon_momentum = {id(p): torch.zeros_like(p) for p in matrix_params}
 
 # Precomputed RoPE Frequency Tables (Cos & Sin)
-theta = 1.0 / (10000.0 ** (torch.arange(0, head_dim, 2, dtype=torch.float32, device=device) / head_dim))
+theta = 1.0 / (rope_theta ** (torch.arange(0, head_dim, 2, dtype=torch.float32, device=device) / head_dim))
 seq_idx = torch.arange(seq_len, dtype=torch.float32, device=device)
 idx_theta = torch.outer(seq_idx, theta)  # Shape: (seq_len, pivot)
 rope_cos, rope_sin = idx_theta.cos().to(dtype), idx_theta.sin().to(dtype)
