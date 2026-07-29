@@ -1,12 +1,13 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from itertools import count
 
 # Standard precision for training parameter storage
 dtype = torch.float32
 
 # ==========================================
-# 1. Hyperparameters & Precomputed Constants
+# 1. Hyperparameters & Constants
 # ==========================================
 batch_size = 2
 dim = 256
@@ -22,7 +23,7 @@ scale = 1.0 / (head_dim ** 0.5)
 # ==========================================
 # 2. Parameters & Precomputed Buffers
 # ==========================================
-# Trainable Attention & Embedding Parameters
+# Embedding & Attention Weights
 w_emb = nn.Parameter(torch.empty((vocab_size, dim), dtype=dtype))
 wq = nn.Parameter(torch.empty((dim, dim), dtype=dtype))
 wk = nn.Parameter(torch.empty((dim, dim), dtype=dtype))
@@ -30,22 +31,22 @@ wv = nn.Parameter(torch.empty((dim, dim), dtype=dtype))
 wo = nn.Parameter(torch.empty((dim, dim), dtype=dtype))
 w_unemb = nn.Parameter(torch.empty((dim, vocab_size), dtype=dtype))
 
-# Trainable SwiGLU FFN Parameters
+# SwiGLU FFN Weights
 w_gate = nn.Parameter(torch.empty((dim, hidden_dim), dtype=dtype))
 w_up = nn.Parameter(torch.empty((dim, hidden_dim), dtype=dtype))
 w_down = nn.Parameter(torch.empty((hidden_dim, dim), dtype=dtype))
 
-# RMSNorm Parameters
+# RMSNorm Weights
 norm_attn = nn.Parameter(torch.ones(dim, dtype=dtype))
 norm_ffn = nn.Parameter(torch.ones(dim, dtype=dtype))
 norm_final = nn.Parameter(torch.ones(dim, dtype=dtype))
 
-# Initialize weights (LLaMA standard std=0.02)
+# Short-circuit Weight Initialization
 params = [w_emb, wq, wk, wv, wo, w_unemb, w_gate, w_up, w_down, norm_attn, norm_ffn, norm_final]
-for param in params:
-    if param.ndim <= 1:
+for p in params:
+    if p.ndim <= 1:
         continue
-    nn.init.normal_(param, mean=0.0, std=0.02)
+    nn.init.normal_(p, mean=0.0, std=0.02)
 
 # Optimizer Setup
 optimizer = torch.optim.AdamW(params, lr=1e-3)
@@ -59,12 +60,11 @@ rope_cos, rope_sin = idx_theta.cos().to(dtype), idx_theta.sin().to(dtype)
 # Precomputed Causal Mask Buffer
 causal_mask = torch.triu(torch.full((seq_len, seq_len), float('-inf'), dtype=dtype), diagonal=1)
 
-def rms_norm(x, weight, eps=1e-5):
+def rms_norm(x, w, eps=1e-5):
     variance = x.pow(2).mean(dim=-1, keepdim=True)
-    return (x * torch.rsqrt(variance + eps)) * weight
+    return (x * torch.rsqrt(variance + eps)) * w
 
 def apply_rope(x, cos, sin, pivot=pivot):
-    # Autograd-safe 2D rotation via slice assignment (zero torch.cat allocation)
     x1, x2 = x[..., :pivot], x[..., pivot:]
     out = torch.empty_like(x)
     out[..., :pivot] = x1 * cos - x2 * sin
@@ -74,15 +74,16 @@ def apply_rope(x, cos, sin, pivot=pivot):
 # ==========================================
 # 3. TRAINING STEP (Forward, Loss, Backward & Optimizer)
 # ==========================================
-tokens = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long)
+inputs = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long)
 targets = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long)
+loss_target = 1 / 128
 
 print("--- Starting Training Loop ---")
-for step in range(3):
+for step in count(1):
     optimizer.zero_grad()
 
     # 3.1 Input Lookup
-    x = w_emb[tokens]
+    x = w_emb[inputs]
 
     # 3.2 Pre-Norm & Q, K, V Projections
     x_norm = rms_norm(x, norm_attn)
@@ -99,8 +100,8 @@ for step in range(3):
     attn = torch.softmax(attn + causal_mask, dim=-1)
 
     # 3.5 Output Projection & Attention Residual
-    out = torch.matmul(attn, v).transpose(1, 2).reshape(batch_size, seq_len, dim)
-    x = x + torch.matmul(out, wo)
+    attn_out = torch.matmul(attn, v).transpose(1, 2).reshape(batch_size, seq_len, dim)
+    x = x + torch.matmul(attn_out, wo)
 
     # 3.6 SwiGLU FFN Pre-Norm, Projection & FFN Residual
     x_norm = rms_norm(x, norm_ffn)
@@ -121,3 +122,7 @@ for step in range(3):
     optimizer.step()
 
     print(f"Training Step {step + 1} | Loss: {loss.item():.4f}")
+
+    if loss.item() < loss_target:
+        print(f"Training complete! Loss has reached the target threshold of {loss_target}.")
+        break
