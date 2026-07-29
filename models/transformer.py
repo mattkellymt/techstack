@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import math
 from itertools import count
+import time
 
 # ==========================================
 # 1. Configuration & Global Setup
@@ -119,35 +120,47 @@ class RMSNorm(nn.Module):
         return output
 
 class Attention(nn.Module):
-    def __init__(self, vocab_dim, kv_dim, **kwargs):
+    def __init__(self, vocab_dim, kv_dim, n_heads, n_kv_heads, head_dim, rope_theta, seq_len, **kwargs):
         super().__init__()
-        self.n_heads = config['n_heads']
-        self.head_dim = config['head_dim']
-        self.n_kv_heads = config['n_kv_heads']
-        rope_theta = config['rope_theta']
-        seq_len = config['seq_len']
+        if n_heads % n_kv_heads != 0:
+            raise ValueError("n_heads must be divisible by n_kv_heads")
+        if head_dim % 2 != 0:
+            raise ValueError("head_dim must be even")
+        expected_kv_dim = n_kv_heads * head_dim
+        if kv_dim != expected_kv_dim:
+            raise ValueError("kv_dim must equal n_kv_heads * head_dim")
 
-        theta = 1.0 / (rope_theta ** (torch.arange(0, self.head_dim, 2, dtype=torch.float32, device=device) / self.head_dim))
-        seq_idx = torch.arange(seq_len, dtype=torch.float32, device=device)
+        self.n_heads = n_heads
+        self.head_dim = head_dim
+        self.n_kv_heads = n_kv_heads
+        self.q_dim = n_heads * head_dim
+
+        theta = 1.0 / (rope_theta ** (torch.arange(0, self.head_dim, 2, dtype=torch.float32) / self.head_dim))
+        seq_idx = torch.arange(seq_len, dtype=torch.float32)
         idx_theta = torch.outer(seq_idx, theta)
 
-        self.rope_cos = idx_theta.cos().to(dtype).to(device)
-        self.rope_sin = idx_theta.sin().to(dtype).to(device)
+        self.register_buffer('rope_cos', idx_theta.cos(), persistent=False)
+        self.register_buffer('rope_sin', idx_theta.sin(), persistent=False)
+        self.register_buffer('causal_mask', torch.ones(0, dtype=torch.bool), persistent=False)
 
-        self.scale = torch.tensor(1.0 / (self.head_dim ** 0.5), dtype=torch.float32, device=device)
-        self.causal_mask = torch.ones(0, dtype=torch.bool, device=device)
+        self.scale = 1.0 / (self.head_dim ** 0.5)
 
-        self.q_proj = create_param(vocab_dim, vocab_dim)
-        self.k_proj = create_param(vocab_dim, kv_dim)
-        self.v_proj = create_param(vocab_dim, kv_dim)
-        self.o_proj = create_param(vocab_dim, vocab_dim)
+        self.q_proj = create_param(vocab_dim, self.q_dim)
+        self.k_proj = create_param(vocab_dim, expected_kv_dim)
+        self.v_proj = create_param(vocab_dim, expected_kv_dim)
+        self.o_proj = create_param(self.q_dim, vocab_dim)
 
     def rope(self, x):
+        seq_len = x.shape[-2]
+        if seq_len > self.rope_cos.shape[0]:
+            raise ValueError("input sequence length exceeds configured seq_len")
         pivot = x.shape[-1] // 2
         x1, x2 = x[..., :pivot], x[..., pivot:]
+        rope_cos = self.rope_cos[:seq_len]
+        rope_sin = self.rope_sin[:seq_len]
         out = torch.empty_like(x)
-        out[..., :pivot] = x1 * self.rope_cos - x2 * self.rope_sin
-        out[..., pivot:] = x1 * self.rope_sin + x2 * self.rope_cos
+        out[..., :pivot] = x1 * rope_cos - x2 * rope_sin
+        out[..., pivot:] = x1 * rope_sin + x2 * rope_cos
         return out
 
     def forward(self, x):
@@ -164,15 +177,15 @@ class Attention(nn.Module):
         k = k.repeat_interleave(n_groups, dim=1)
         v = v.repeat_interleave(n_groups, dim=1)
 
-        if self.causal_mask.shape != (s, s):
-            self.causal_mask = torch.ones(s, s, dtype=bool, device=device).triu(diagonal=1)
+        if self.causal_mask.shape != (s, s) or self.causal_mask.device != x.device:
+            self.causal_mask = torch.ones(s, s, dtype=torch.bool, device=x.device).triu(diagonal=1)
         causal_mask = self.causal_mask
 
         attn = torch.matmul(q, k.transpose(-2, -1)) * self.scale
         attn = attn.masked_fill(causal_mask, float("-inf"))
         attn = torch.softmax(attn, dim=-1)
         
-        attn_out = torch.matmul(attn, v).transpose(1, 2).reshape(b, s, d)
+        attn_out = torch.matmul(attn, v).transpose(1, 2).reshape(b, s, self.q_dim)
         output = torch.matmul(attn_out, self.o_proj.weight)
         return output
 
@@ -270,8 +283,10 @@ loss_target = config['loss_target']
 
 inputs = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long, device=device)
 targets = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long, device=device)
+start_time = time.time()
 
 print(f"--- Starting Training Loop on {device} (Muon Optimizer) ---")
+
 for step in count(1):
     model.zero_grad()
 
@@ -297,3 +312,9 @@ for step in count(1):
         print(f"Training complete! Loss is {loss}.")
         model.save("ollama_model.pt")
         break
+
+stop_time = time.time()
+elapsed_time = stop_time - start_time
+total_params = sum(p.numel() for p in model.parameters() if p.ndim == 2)
+print(f"Training completed in {stop_time - start_time:.2f} seconds.")
+print(total_params * step / elapsed_time)
