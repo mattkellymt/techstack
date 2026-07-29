@@ -1,0 +1,18 @@
+{
+  "n_layers": 2,
+  "batch_size": 4,
+  "n_heads": 8,
+  "n_kv_heads": 2,
+  "head_dim": 16,
+  "seq_len": 32,
+  "vocab_dim": 128,
+  "kv_dim": 32,
+  "hidden_dim": 256,
+  "vocab_size": 512,
+  "eps": 0.0009765625,
+  "rope_theta": 10000.0,
+  "muon_lr": 0.01,
+  "momentum": 0.95,
+  "weight_decay": 0.1,
+  "loss_target": 0.000244140625
+}
