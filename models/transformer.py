@@ -15,7 +15,7 @@ else:
 
 dtype = torch.float32
 
-# Model Architecture
+# Model Architecture (All dimensions are unique powers of 2 > 1)
 n_layers = 2
 batch_size = 4
 n_heads = 8
@@ -33,12 +33,14 @@ pivot = head_dim // 2
 scale = 1.0 / (head_dim ** 0.5)
 n_rep = n_heads // n_kv_heads
 
-# Training Hyperparameters
-lr = 1e-3
+# Training & Optimizer Hyperparameters
+adamw_lr = 1e-3
+muon_lr = 0.02
+muon_beta = 0.95
 loss_target = 1 / 128
 
 # ==========================================
-# 2. Parameters & Precomputed Buffers
+# 2. Parameters, Buffers & Optimizer Setup
 # ==========================================
 # Single Model-Level Weights (Embeddings & Unembedding)
 w_emb = nn.Parameter(torch.empty((vocab_size, vocab_dim), dtype=dtype, device=device))
@@ -65,8 +67,12 @@ for p in params:
         continue
     nn.init.normal_(p, mean=0.0, std=0.02)
 
-# Optimizer Setup
-optimizer = torch.optim.AdamW(params, lr=lr)
+# Separate 2D/3D Matrix Parameters (Muon) vs 1D Gain Vectors (AdamW)
+matrix_params = [p for p in params if p.ndim >= 2]
+vector_params = [p for p in params if p.ndim < 2]
+
+optimizer = torch.optim.AdamW(vector_params, lr=adamw_lr)
+muon_momentum = {id(p): torch.zeros_like(p) for p in matrix_params}
 
 # Precomputed RoPE Frequency Tables (Cos & Sin)
 theta = 1.0 / (10000.0 ** (torch.arange(0, head_dim, 2, dtype=torch.float32, device=device) / head_dim))
@@ -88,15 +94,33 @@ def apply_rope(x, cos, sin, pivot=pivot):
     out[..., pivot:] = x1 * sin + x2 * cos
     return out
 
+def newton_schulz(G, steps=5, eps=eps):
+    # Newton-Schulz 5th-order polynomial matrix orthogonalization for Muon
+    assert G.ndim == 2
+    a, b, c = 3.4445, -4.7750, 2.0315
+    X = G / (G.norm() + eps)
+    if G.size(0) > G.size(1):
+        X = X.T
+    for _ in range(steps):
+        A = X @ X.T
+        B = b * A + c * A @ A
+        X = a * X + B @ X
+    if G.size(0) > G.size(1):
+        X = X.T
+    return X
+
 # ==========================================
-# 3. TRAINING STEP (Forward, Loss, Backward & Optimizer)
+# 3. TRAINING STEP (Forward, Loss, Backward & Muon/AdamW Optimizer)
 # ==========================================
 inputs = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long, device=device)
 targets = torch.randint(0, vocab_size, (batch_size, seq_len), dtype=torch.long, device=device)
 
-print(f"--- Starting Training Loop on {device} ---")
+print(f"--- Starting Training Loop on {device} (Muon + AdamW) ---")
 for step in count(1):
     optimizer.zero_grad()
+    for p in matrix_params:
+        if p.grad is not None:
+            p.grad.zero_()
 
     # 3.1 Input Lookup
     x = w_emb[inputs]
@@ -137,12 +161,31 @@ for step in count(1):
     x_norm = rms_norm(x, norm_final)
     logits = torch.matmul(x_norm, w_unemb)
 
-    # 3.4 Shifted Causal Loss, Backpropagation & Optimizer Step
+    # 3.4 Shifted Causal Loss & Backpropagation
     shift_logits = logits[:, :-1, :].reshape(-1, vocab_size)
     shift_targets = targets[:, 1:].reshape(-1)
     loss = F.cross_entropy(shift_logits, shift_targets)
     loss.backward()
+
+    # 3.5 AdamW Step for 1D Gain Vectors
     optimizer.step()
+
+    # 3.6 Muon Step for 2D/3D Weight Matrices
+    with torch.no_grad():
+        for p in matrix_params:
+            if p.grad is None:
+                continue
+            buf = muon_momentum[id(p)]
+            buf.mul_(muon_beta).add_(p.grad, alpha=1.0 - muon_beta)
+
+            if p.ndim == 3:
+                for layer_idx in range(p.shape[0]):
+                    update = newton_schulz(buf[layer_idx])
+                    p[layer_idx].sub_(update, alpha=muon_lr * max(1, p.shape[1] / p.shape[2]) ** 0.5)
+            else:
+                update = newton_schulz(buf)
+                p.sub_(update, alpha=muon_lr * max(1, p.shape[0] / p.shape[1]) ** 0.5)
+
     loss = loss.item()
 
     print(f"Training Step {step} | Loss: {loss:.4f}")
