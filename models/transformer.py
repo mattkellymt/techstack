@@ -19,7 +19,7 @@ dtype = torch.float16
 
 # Top-level Model & Training Configuration Dictionary
 config = {
-    'n_layers': 2,            
+    'n_layers': 100,            
     'batch_size': 4,
     'n_heads': 8,             
     'n_kv_heads': 2,          
@@ -72,6 +72,10 @@ class Muon(torch.optim.Optimizer):
         return update
 
     def step_param(self, p, group):
+        if p.ndim != 2:
+            raise ValueError("Muon only supports 2D parameters")
+        if p.grad is None:
+            return
         lr = group['lr']
         weight_decay = group['weight_decay']
         momentum = group['momentum']
@@ -79,10 +83,6 @@ class Muon(torch.optim.Optimizer):
         eps = group['eps']
         ns_steps = group['ns_steps']
         grad = p.grad
-        if p.ndim != 2:
-            raise ValueError("Muon only supports 2D parameters")
-        if grad is None:
-            return
         state = self.state[p]
         if 'momentum_buffer' not in state:
             state['momentum_buffer'] = torch.zeros_like(grad)
