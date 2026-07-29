@@ -33,7 +33,7 @@ config = {
     'muon_lr': 0.02,
     'momentum': 0.95,
     'weight_decay': 0.1,
-    'loss_target': 1 / 128,
+    'loss_target': 1 / 4096,
 }
 
 class Muon(torch.optim.Optimizer):
@@ -239,7 +239,6 @@ class Model(nn.Module):
             'state_dict': self.state_dict()
         }
         torch.save(checkpoint, filepath)
-        print(f"Saved checkpoint to '{filepath}' ({len(checkpoint['state_dict'])} weight tensors + config).")
 
     def load(self, filepath, device=None):
         target_device = device or next(self.parameters()).device
@@ -248,7 +247,6 @@ class Model(nn.Module):
             self.config = checkpoint['config']
         sd = checkpoint.get('state_dict', checkpoint)
         self.load_state_dict(sd)
-        print(f"Loaded checkpoint from '{filepath}' onto {target_device}.")
 
 # Instantiate Model & Initialize Parameters for Training
 model = Model(**config).to(device=device, dtype=dtype)
@@ -289,10 +287,13 @@ for step in count(1):
     # Muon Optimizer Step
     optimizer.step()
 
-    loss_val = loss.item()
-    print(f"Training Step {step} | Loss: {loss_val:.4f}")
+    print(f"Training Step {step} | Loss: {loss:.4f}")
 
-    if loss_val < loss_target or loss_val != loss_val:
-        print(f"Training complete! Loss has reached the target threshold of {loss_target}.")
+    if torch.isnan(loss) or torch.isinf(loss):
+        print(f"Invalid Loss {loss}. Stopping training.")
+        break
+
+    if loss < loss_target:
+        print(f"Training complete! Loss is {loss}.")
         model.save("ollama_model.pt")
         break
