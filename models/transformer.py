@@ -15,11 +15,11 @@ elif torch.backends.mps.is_available():
 else:
     device = torch.device("cpu")
 
-dtype = torch.float16
+dtype = torch.float32
 
 # Top-level Model & Training Configuration Dictionary
 config = {
-    'n_layers': 100,            
+    'n_layers': 2,            
     'batch_size': 4,
     'n_heads': 8,             
     'n_kv_heads': 2,          
@@ -31,7 +31,7 @@ config = {
     'vocab_size': 512,       
     'eps': 1 / 1024,       
     'rope_theta': 10_000.0,   
-    'muon_lr': 0.02,
+    'muon_lr': 0.01,
     'momentum': 0.95,
     'weight_decay': 0.1,
     'loss_target': 1 / 4096,
@@ -309,12 +309,14 @@ for step in count(1):
         break
 
     if loss < loss_target:
-        print(f"Training complete! Loss is {loss}.")
-        model.save("ollama_model.pt")
         break
 
 stop_time = time.time()
 elapsed_time = stop_time - start_time
 total_params = sum(p.numel() for p in model.parameters() if p.ndim == 2)
-print(f"Training completed in {stop_time - start_time:.2f} seconds.")
-print(total_params * step / elapsed_time)
+
+print(f"Parameters: {total_params}")
+print(f"Elapsed {elapsed_time:.2f}")
+print(f"Loss: {loss:.8f}")
+
+model.save("ollama_model.pt")
