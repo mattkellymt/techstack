@@ -103,8 +103,8 @@ def ensure_model_weights():
     print(f"Converted and saved Teacher weights to '{TEACHER_CHECKPOINT_PATH}'.", flush=True)
 
 
-@torch.no_grad()
-def generate_dynamic_prompt(teacher, tokenizer, temperature=0.8):
+@torch.inference_mode()
+def generate_dynamic_prompt(teacher, tokenizer, temperature=0.8, max_new_tokens=1024):
     """Step A: Generate a dynamic biology prompt using Teacher with non-zero temperature"""
     meta_prompt = random.choice(META_PROMPTS)
     prompt_encoding = tokenizer.apply_chat_template(
@@ -116,7 +116,7 @@ def generate_dynamic_prompt(teacher, tokenizer, temperature=0.8):
     curr = input_ids
     eos_ids = {128009, 128001}
 
-    for _ in range(32):
+    for _ in range(max_new_tokens):
         logits = teacher(curr)
         probs = F.softmax(logits[:, -1, :] / temperature, dim=-1)
         next_token = torch.multinomial(probs, num_samples=1)
@@ -129,8 +129,8 @@ def generate_dynamic_prompt(teacher, tokenizer, temperature=0.8):
     return prompt_text if len(prompt_text) > 10 else "What is the process by which enzymes catalyze biological reactions?"
 
 
-@torch.no_grad()
-def run_inference_zero_temp(prompt, model, tokenizer, max_new_tokens=96):
+@torch.inference_mode()
+def run_inference_zero_temp(prompt, model, tokenizer, max_context=2048):
     """Step B: Run inference on prompt using temperature 0.0 (greedy decoding)"""
     encoding = tokenizer.apply_chat_template(
         [{"role": "user", "content": prompt}],
@@ -140,6 +140,8 @@ def run_inference_zero_temp(prompt, model, tokenizer, max_new_tokens=96):
     input_ids = encoding["input_ids"].to(device=device)
     curr_tokens = input_ids
     eos_token_ids = {128009, 128001}
+
+    max_new_tokens = max(0, max_context - input_ids.shape[1])
 
     for _ in range(max_new_tokens):
         logits = model(curr_tokens)
@@ -158,7 +160,7 @@ def run_inference_zero_temp(prompt, model, tokenizer, max_new_tokens=96):
 
 def main():
     parser = argparse.ArgumentParser(description="Continuous Dynamic Biology Prompt JSD + Lowercase Doc Loss Trainer")
-    parser.add_argument("--lr", type=float, default=0.001, help="Learning rate for Muon (default: 0.001)")
+    parser.add_argument("--lr", type=float, default=DEFAULT_CONFIG["muon_lr"], help=f"Learning rate for Muon (default: {DEFAULT_CONFIG['muon_lr']})")
     args = parser.parse_args()
 
     ensure_model_weights()
@@ -244,31 +246,27 @@ def main():
             teacher_output = run_inference_zero_temp(dynamic_prompt, teacher, tokenizer)
             student_output = run_inference_zero_temp(dynamic_prompt, student, tokenizer)
 
-            # Max 256 chars formatting
+            # Max 256 chars formatting removed as per user request to format nicely and minimally
             prompt_disp = dynamic_prompt
             teacher_disp = teacher_output
             student_disp = student_output
 
-            # Print 5-line output format with max 256 chars per text section
-            print(
-                f"Step {step:04d} | JSD: {jsd_loss.item():.6f} | "
-                f"Raw Doc: {raw_doc_loss.item():.6f} | "
-                f"Bounded Doc: {bounded_doc_loss.item():.6f} | "
-                f"Total Loss: {total_loss.item():.6f}",
-                flush=True
-            )
-            print(f"Logit Gap ('{top_token_str.strip()}' vs '{lower_str.strip()}'): {gap:+.4f}", flush=True)
-            print(f"Prompt: \"{prompt_disp}\"", flush=True)
-            print(f"Teacher: \"{teacher_disp}\"", flush=True)
-            print(f"Student: \"{student_disp}\"", flush=True)
-            print("", flush=True)
             print("-" * 80, flush=True)
             print("", flush=True)
+            print(f"Step {step:04d} | JSD: {jsd_loss.item():.4f} | Total Loss: {total_loss.item():.4f} | Logit Gap: {gap:+.4f}", flush=True)
+            print("", flush=True)
+            print(f"prompt: {prompt_disp}", flush=True)
+            print("", flush=True)
+            print(f"teacher: {teacher_disp}", flush=True)
+            print("", flush=True)
+            print(f"student: {student_disp}", flush=True)
+            print("", flush=True)
+            print("-" * 80, flush=True)
             step += 1
 
     except KeyboardInterrupt:
-        print("\nTraining interrupted by user. Saving final Student checkpoint...", flush=True)
-        student.save(STUDENT_CHECKPOINT_PATH)
+        print("\nTraining interrupted by user. Saving final Teacher checkpoint...", flush=True)
+        teacher.save(TEACHER_CHECKPOINT_PATH)
         print("Shutdown complete.", flush=True)
 
 
