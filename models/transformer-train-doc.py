@@ -37,7 +37,7 @@ DEFAULT_CONFIG = {
     "vocab_size": 128256,
     "eps": 1e-5,
     "rope_theta": 500000.0,
-    "muon_lr": 0.001,
+    "muon_lr": 0.01,
     "momentum": 0.95,
     "weight_decay": 0.01,
     "loss_target": 1e-4,
@@ -185,7 +185,7 @@ def main():
     )
 
     print("\n=================================================================", flush=True)
-    print("Starting Biology Domain Training with Dynamic Prompts & 256-Char Truncation", flush=True)
+    print("Starting Biology Domain Training with Dynamic Prompts", flush=True)
     print(f"JSD_MAX Cap: {JSD_MAX:.6f} | Muon LR: {args.lr}", flush=True)
     print("=================================================================\n", flush=True)
 
@@ -245,9 +245,9 @@ def main():
             student_output = run_inference_zero_temp(dynamic_prompt, student, tokenizer)
 
             # Max 256 chars formatting
-            prompt_disp = dynamic_prompt[:256]
-            teacher_disp = teacher_output[:256]
-            student_disp = student_output[:256]
+            prompt_disp = dynamic_prompt
+            teacher_disp = teacher_output
+            student_disp = student_output
 
             # Print 5-line output format with max 256 chars per text section
             print(
@@ -258,11 +258,12 @@ def main():
                 flush=True
             )
             print(f"Logit Gap ('{top_token_str.strip()}' vs '{lower_str.strip()}'): {gap:+.4f}", flush=True)
-            print(f"Prompt (max 256 chars): \"{prompt_disp}\"", flush=True)
-            print(f"Teacher (temp 0.0, max 256 chars): \"{teacher_disp}\"", flush=True)
-            print(f"Student (temp 0.0, max 256 chars): \"{student_disp}\"", flush=True)
+            print(f"Prompt: \"{prompt_disp}\"", flush=True)
+            print(f"Teacher: \"{teacher_disp}\"", flush=True)
+            print(f"Student: \"{student_disp}\"", flush=True)
             print("", flush=True)
-
+            print("-" * 80, flush=True)
+            print("", flush=True)
             step += 1
 
     except KeyboardInterrupt:
