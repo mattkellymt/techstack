@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 import os
 import time
 import torch
@@ -129,11 +130,11 @@ def ensure_model_weights():
 
 
 # ==========================================
-# 3. Main Execution & Symmetric KL Training
+# 3. Main Execution & JSD Training
 # ==========================================
 
 def main():
-    parser = argparse.ArgumentParser(description="Teacher vs Student Symmetric KL (Forward + Reverse) Trainer")
+    parser = argparse.ArgumentParser(description="Teacher vs Student Jensen-Shannon Divergence (JSD) Trainer")
     parser.add_argument("--temperature", type=float, default=0.0, help="Training temperature (default: 0.0)")
     parser.add_argument("--weight-decay", type=float, default=0.0, help="Weight decay for optimizer (default: 0.0)")
     args = parser.parse_args()
@@ -160,9 +161,9 @@ def main():
         weight_decay=args.weight_decay,
     )
 
-    print(f"\n--- Processing {len(PROMPTS)} Fixed Prompts with Symmetric KL Loss (Forward + Reverse) ---", flush=True)
+    print(f"\n--- Processing {len(PROMPTS)} Fixed Prompts with Jensen-Shannon Divergence (JSD) Loss ---", flush=True)
     start_time = time.time()
-    total_sym_loss = 0.0
+    total_jsd_loss = 0.0
 
     for idx, prompt in enumerate(PROMPTS, 1):
         encoding = tokenizer.apply_chat_template(
@@ -182,37 +183,36 @@ def main():
             teacher_logits = teacher_logits / args.temperature
             student_logits = student_logits / args.temperature
 
-        # Exact log_softmax & softmax for both models
+        # Exact log_softmax for both models
         log_probs_student = F.log_softmax(student_logits.float().reshape(-1, vocab_size), dim=-1)
         log_probs_teacher = F.log_softmax(teacher_logits.float().reshape(-1, vocab_size), dim=-1)
-        probs_student = log_probs_student.exp()
 
-        # 1. Forward KL: KL(P_Teacher || P_Student)
-        forward_kl = F.kl_div(log_probs_student, log_probs_teacher, reduction='batchmean', log_target=True)
+        # Log-space Midpoint distribution M = 0.5 * (P_Student + P_Teacher)
+        log_probs_mid = torch.logsumexp(torch.stack([log_probs_student, log_probs_teacher], dim=0), dim=0) - math.log(2)
 
-        # 2. Reverse KL: KL(P_Student || P_Teacher)
-        reverse_kl = (probs_student * (log_probs_student - log_probs_teacher)).sum(dim=-1).mean()
+        # JSD = 0.5 * KL(P_Student || M) + 0.5 * KL(P_Teacher || M)
+        kl_student_m = F.kl_div(log_probs_student, log_probs_mid, reduction='batchmean', log_target=True)
+        kl_teacher_m = F.kl_div(log_probs_teacher, log_probs_mid, reduction='batchmean', log_target=True)
 
-        # 3. Symmetric KL Loss = 0.5 * Forward_KL + 0.5 * Reverse_KL
-        symmetric_kl_loss = 0.5 * forward_kl + 0.5 * reverse_kl
+        jsd_loss = 0.5 * kl_student_m + 0.5 * kl_teacher_m
 
-        loss_val = symmetric_kl_loss.item()
-        total_sym_loss += loss_val
+        loss_val = jsd_loss.item()
+        total_jsd_loss += loss_val
         max_logits_diff = (teacher_logits - student_logits).abs().max().item()
 
         print(
             f"Sample {idx:02d}/32 | Diff: {max_logits_diff:.6f} | "
-            f"Fwd KL: {forward_kl.item():.8f} | Rev KL: {reverse_kl.item():.8f} | "
-            f"Sym KL Loss: {loss_val:.8f} | Prompt: \"{prompt[:35]}...\"",
+            f"KL(S||M): {kl_student_m.item():.8f} | KL(T||M): {kl_teacher_m.item():.8f} | "
+            f"JSD Loss: {loss_val:.8f} | Prompt: \"{prompt[:35]}...\"",
             flush=True
         )
 
-    avg_sym_loss = total_sym_loss / len(PROMPTS)
+    avg_jsd_loss = total_jsd_loss / len(PROMPTS)
     elapsed = time.time() - start_time
 
     print(f"\n=======================================================", flush=True)
     print(f"Completed pass over all {len(PROMPTS)} prompts in {elapsed:.2f}s", flush=True)
-    print(f"Final Average Symmetric KL Loss: {avg_sym_loss:.8f}", flush=True)
+    print(f"Final Average JSD Loss: {avg_jsd_loss:.8f}", flush=True)
     print(f"=======================================================\n", flush=True)
 
 
