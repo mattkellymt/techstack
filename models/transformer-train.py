@@ -258,14 +258,14 @@ def train_on_records(records, model, ref_model, optimizer, tokenizer, temperatur
         if temperature > 0.0:
             logits = logits / temperature
 
-        # Pure KL-Divergence Distillation against Frozen Reference Model
+        # Pure KL-Divergence Distillation against Frozen Reference Model (in FP32 for exact numerical parity)
         with torch.no_grad():
             ref_logits = ref_model(inputs)
             if temperature > 0.0:
                 ref_logits = ref_logits / temperature
                 
-        log_probs = F.log_softmax(logits.reshape(-1, vocab_size), dim=-1)
-        ref_probs = F.softmax(ref_logits.reshape(-1, vocab_size), dim=-1)
+        log_probs = F.log_softmax(logits.float().reshape(-1, vocab_size), dim=-1)
+        ref_probs = F.softmax(ref_logits.float().reshape(-1, vocab_size), dim=-1)
         kl_loss = F.kl_div(log_probs, ref_probs, reduction='batchmean')
         
         loss = kl_loss
