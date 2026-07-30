@@ -55,7 +55,8 @@ DEFAULT_CONFIG = {
 }
 
 HF_REPO_ID = "unsloth/Llama-3.2-1B-Instruct"
-CHECKPOINT_PATH = "llama3_2_1b.safetensors"
+TEACHER_CHECKPOINT_PATH = "teacher_llama3_2_1b.safetensors"
+STUDENT_CHECKPOINT_PATH = "student_llama3_2_1b.safetensors"
 CONFIG_PATH = "llama3_2_1b.json"
 DATASET_PATH = "synthetic_dataset.jsonl"
 
@@ -65,10 +66,14 @@ DATASET_PATH = "synthetic_dataset.jsonl"
 # ==========================================
 
 def ensure_model_weights():
-    if os.path.exists(CHECKPOINT_PATH) and os.path.exists(CONFIG_PATH):
+    # If legacy checkpoint exists, rename/ensure teacher checkpoint
+    if not os.path.exists(TEACHER_CHECKPOINT_PATH) and os.path.exists("llama3_2_1b.safetensors"):
+        os.rename("llama3_2_1b.safetensors", TEACHER_CHECKPOINT_PATH)
+
+    if os.path.exists(TEACHER_CHECKPOINT_PATH) and os.path.exists(CONFIG_PATH):
         return
 
-    print(f"Preparing transparent model weights for {HF_REPO_ID}...")
+    print(f"Preparing transparent Teacher model weights for {HF_REPO_ID}...")
     hf_path = hf_hub_download(repo_id=HF_REPO_ID, filename="model.safetensors")
     sd = load_safetensors(hf_path)
 
@@ -89,14 +94,15 @@ def ensure_model_weights():
         mapped_sd[f"model.layers.{i}.mlp.up_proj.weight"] = sd[f"model.layers.{i}.mlp.up_proj.weight"].T.to(dtype).contiguous()
         mapped_sd[f"model.layers.{i}.mlp.down_proj.weight"] = sd[f"model.layers.{i}.mlp.down_proj.weight"].T.to(dtype).contiguous()
 
-    save_safetensors(mapped_sd, CHECKPOINT_PATH)
+    save_safetensors(mapped_sd, TEACHER_CHECKPOINT_PATH)
     with open(CONFIG_PATH, "w") as f:
         json.dump(DEFAULT_CONFIG, f, indent=2)
-    print(f"Converted and saved weights to '{CHECKPOINT_PATH}'.")
+    print(f"Converted and saved Teacher weights to '{TEACHER_CHECKPOINT_PATH}'.")
 
 
-def run_inference(prompt, model, tokenizer, max_new_tokens=None):
+def run_inference(prompt, model, tokenizer, max_new_tokens=None, temperature=None):
     max_new_tokens = 64 if max_new_tokens is None else max_new_tokens
+    temperature = 0.0 if temperature is None else temperature
     prompt_encoding = tokenizer.apply_chat_template(
         [{"role": "user", "content": prompt}],
         add_generation_prompt=True,
@@ -110,7 +116,11 @@ def run_inference(prompt, model, tokenizer, max_new_tokens=None):
     with torch.no_grad():
         for _ in range(max_new_tokens):
             logits = model(curr_tokens)
-            next_token = torch.argmax(logits[:, -1, :], dim=-1, keepdim=True)
+            if temperature > 0.0:
+                probs = F.softmax(logits[:, -1, :] / temperature, dim=-1)
+                next_token = torch.multinomial(probs, num_samples=1)
+            else:
+                next_token = torch.argmax(logits[:, -1, :], dim=-1, keepdim=True)
             curr_tokens = torch.cat([curr_tokens, next_token], dim=1)
             if next_token.item() in eos_token_ids:
                 break
@@ -278,16 +288,17 @@ def train_on_records(records, model, ref_model, optimizer, tokenizer, temperatur
 # 4. Main Execution & Multithreading
 # ==========================================
 
-def data_generator_worker(data_queue, batch_size):
-    """Background thread that continuously generates synthetic data via Ollama"""
-    print(f"[Producer] Starting Ollama data generation thread (batch_size={batch_size})...", flush=True)
+def data_generator_worker(data_queue, ref_model, tokenizer, batch_size):
+    """Background thread that continuously generates synthetic data via PyTorch Reference Model (Teacher)"""
+    print(f"[Producer] Starting PyTorch Teacher Model data generation thread (batch_size={batch_size})...", flush=True)
+    import random
     while True:
         try:
-            # Generate prompts
-            prompts = generate_synthetic_prompts(count=batch_size, temperature=0.9)
+            # Sample prompts
+            prompts = random.sample(FALLBACK_PROMPTS, min(batch_size, len(FALLBACK_PROMPTS)))
             batch_records = []
             for p in prompts:
-                resp = query_ollama(p, temperature=0.0)
+                resp = run_inference(p, ref_model, tokenizer, max_new_tokens=64, temperature=0.0)
                 batch_records.append({"prompt": p, "response": resp})
             
             # Put batch in queue (blocks if queue is full)
@@ -309,17 +320,18 @@ def main():
 
     tokenizer = AutoTokenizer.from_pretrained(HF_REPO_ID)
     
-    print("\n--- Loading Active Training Model ---", flush=True)
-    model = Model(**DEFAULT_CONFIG).to(device=device, dtype=dtype)
-    if not model.load(CHECKPOINT_PATH, device=device):
-        model.init_params()
-
-    print("--- Loading Frozen Reference Model (Anti-Forgetting) ---", flush=True)
+    print("\n--- Loading Frozen Teacher Model (Pristine Baseline) ---", flush=True)
     ref_model = Model(**DEFAULT_CONFIG).to(device=device, dtype=dtype)
-    ref_model.load(CHECKPOINT_PATH, device=device)
+    ref_model.load(TEACHER_CHECKPOINT_PATH, device=device)
     ref_model.eval()
     for param in ref_model.parameters():
         param.requires_grad = False
+
+    print("--- Loading Student Model (Training Target) ---", flush=True)
+    model = Model(**DEFAULT_CONFIG).to(device=device, dtype=dtype)
+    student_loaded = model.load(STUDENT_CHECKPOINT_PATH, device=device)
+    if not student_loaded:
+        model.load(TEACHER_CHECKPOINT_PATH, device=device)
 
     optimizer = Muon(
         (p for p in model.parameters() if p.ndim == 2),
@@ -328,9 +340,9 @@ def main():
         weight_decay=args.weight_decay,
     )
 
-    # Start the data generation thread
+    # Start the data generation thread using PyTorch Reference Model
     data_queue = queue.Queue(maxsize=3) # Hold up to 3 batches in RAM
-    producer_thread = threading.Thread(target=data_generator_worker, args=(data_queue, args.batch_size), daemon=True)
+    producer_thread = threading.Thread(target=data_generator_worker, args=(data_queue, ref_model, tokenizer, args.batch_size), daemon=True)
     producer_thread.start()
 
     print("\n--- Starting Continuous Multithreaded Training Loop ---", flush=True)
@@ -375,14 +387,14 @@ def main():
             
             # Save checkpoints periodically to prevent SSD wear (every 50 steps)
             if step % 50 == 0:
-                print(f"--> Saving periodic checkpoint at step {step}...", flush=True)
-                model.save(CHECKPOINT_PATH)
+                print(f"--> Saving periodic Student checkpoint at step {step}...", flush=True)
+                model.save(STUDENT_CHECKPOINT_PATH)
             
             step += 1
             
     except KeyboardInterrupt:
-        print("\nTraining interrupted by user. Saving final checkpoint...", flush=True)
-        model.save(CHECKPOINT_PATH)
+        print("\nTraining interrupted by user. Saving final Student checkpoint...", flush=True)
+        model.save(STUDENT_CHECKPOINT_PATH)
         plt.ioff()
         plt.show()
         print("Shutdown complete.", flush=True)
