@@ -128,18 +128,10 @@ class RoPE(nn.Module):
         self.register_buffer('cos', emb.cos(), persistent=False)
         self.register_buffer('sin', emb.sin(), persistent=False)
 
-    def forward(self, x, position_ids=None):
-        b, s = x.shape[:2]
-        if position_ids is None:
-            position_ids = torch.arange(s, dtype=torch.long, device=x.device).unsqueeze(0).expand(b, -1)
-            
+    def forward(self, position_ids):
         cos = self.cos[position_ids].unsqueeze(2) # [B, S, 1, head_dim]
         sin = self.sin[position_ids].unsqueeze(2) # [B, S, 1, head_dim]
-        
-        x1 = x[..., :self.head_dim // 2]
-        x2 = x[..., self.head_dim // 2:]
-        rotate_x = torch.cat((-x2, x1), dim=-1)
-        return (x * cos) + (rotate_x * sin)
+        return cos, sin
 
 
 class Attention(nn.Module):
@@ -157,43 +149,43 @@ class Attention(nn.Module):
         self.head_dim = head_dim
         self.n_kv_heads = n_kv_heads
         self.q_dim = n_heads * head_dim
-        self.scale = 1.0 / (self.head_dim ** 0.5)
-
-        self.rope = RoPE(head_dim, rope_theta=rope_theta, rope_scaling=rope_scaling, seq_len=seq_len)
-        self.register_buffer('causal_mask', torch.ones(0, dtype=torch.bool), persistent=False)
 
         self.q_proj = create_param(vocab_dim, self.q_dim)
         self.k_proj = create_param(vocab_dim, expected_kv_dim)
         self.v_proj = create_param(vocab_dim, expected_kv_dim)
         self.o_proj = create_param(self.q_dim, vocab_dim)
 
-    def forward(self, x, position_ids=None, attention_mask=None):
+    def forward(self, x, position_embeddings=None, attention_mask=None):
         b, s, d = x.shape
         q = torch.matmul(x, self.q_proj.weight).reshape(b, s, self.n_heads, self.head_dim).transpose(1, 2)
         k = torch.matmul(x, self.k_proj.weight).reshape(b, s, self.n_kv_heads, self.head_dim).transpose(1, 2)
         v = torch.matmul(x, self.v_proj.weight).reshape(b, s, self.n_kv_heads, self.head_dim).transpose(1, 2)
 
-        # q, k shapes after transpose: [B, n_heads, S, head_dim]
-        # RoPE expects [B, S, n_heads, head_dim]
-        q = self.rope(q.transpose(1, 2), position_ids).transpose(1, 2)
-        k = self.rope(k.transpose(1, 2), position_ids).transpose(1, 2)
+        if position_embeddings is not None:
+            cos, sin = position_embeddings
+            def apply_rope(x_to_rotate):
+                x1 = x_to_rotate[..., :self.head_dim // 2]
+                x2 = x_to_rotate[..., self.head_dim // 2:]
+                rotate_x = torch.cat((-x2, x1), dim=-1)
+                return (x_to_rotate * cos) + (rotate_x * sin)
+            
+            q = apply_rope(q.transpose(1, 2)).transpose(1, 2)
+            k = apply_rope(k.transpose(1, 2)).transpose(1, 2)
 
         n_rep = self.n_heads // self.n_kv_heads
-        k = k.repeat_interleave(n_rep, dim=1)
-        v = v.repeat_interleave(n_rep, dim=1)
-
-        attn = torch.matmul(q, k.transpose(-2, -1)) * self.scale
         
-        if attention_mask is not None:
-            attn = attn + attention_mask
-        else:
-            if self.causal_mask.shape != (s, s) or self.causal_mask.device != x.device:
-                self.causal_mask = torch.ones(s, s, dtype=torch.bool, device=x.device).triu(diagonal=1)
-            attn = attn.masked_fill(self.causal_mask, float("-inf"))
-            
-        attn = torch.softmax(attn, dim=-1)
+        # Zero-allocation GQA routing for SDPA
+        q_gqa = q.view(b, self.n_kv_heads, n_rep, s, self.head_dim)
+        k_gqa = k.unsqueeze(2)
+        v_gqa = v.unsqueeze(2)
 
-        out = torch.matmul(attn, v).transpose(1, 2).reshape(b, s, self.q_dim)
+        out = F.scaled_dot_product_attention(
+            q_gqa, k_gqa, v_gqa, 
+            attn_mask=attention_mask,
+            is_causal=(attention_mask is None)
+        )
+        
+        out = out.reshape(b, self.n_heads, s, self.head_dim).transpose(1, 2).reshape(b, s, self.q_dim)
         return torch.matmul(out, self.o_proj.weight)
 
 
@@ -219,8 +211,8 @@ class Block(nn.Module):
         self.post_attention_layernorm = RMSNorm(**kwargs)
         self.mlp = MLP(**kwargs)
 
-    def forward(self, x, position_ids=None, attention_mask=None):
-        x = x + self.self_attn(self.input_layernorm(x), position_ids, attention_mask)
+    def forward(self, x, position_embeddings=None, attention_mask=None):
+        x = x + self.self_attn(self.input_layernorm(x), position_embeddings=position_embeddings, attention_mask=attention_mask)
         x = x + self.mlp(self.post_attention_layernorm(x))
         return x
 
@@ -235,15 +227,22 @@ class Model(nn.Module):
 
         self.model = nn.ModuleDict({
             'embed_tokens': create_param(vocab_size, vocab_dim),
+            'rotary_emb': RoPE(**config),
             'norm': RMSNorm(**config),
             'layers': nn.ModuleList(Block(**config) for _ in range(n_layers))
         })
         # Note: lm_head is tied to embed_tokens.weight
 
     def forward(self, inputs, position_ids=None, attention_mask=None):
+        b, s = inputs.shape
+        if position_ids is None:
+            position_ids = torch.arange(s, dtype=torch.long, device=inputs.device).unsqueeze(0).expand(b, -1)
+            
+        position_embeddings = self.model.rotary_emb(position_ids)
+        
         x = self.model.embed_tokens.weight[inputs]
         for layer in self.model.layers:
-            x = layer(x, position_ids, attention_mask)
+            x = layer(x, position_embeddings=position_embeddings, attention_mask=attention_mask)
         x = self.model.norm(x)
         return torch.matmul(x, self.model.embed_tokens.weight.T)
 

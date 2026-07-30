@@ -5,6 +5,9 @@ import os
 import re
 import time
 import requests
+import threading
+import queue
+import matplotlib.pyplot as plt
 import torch
 import torch.nn.functional as F
 from safetensors.torch import load_file as load_safetensors, save_file as save_safetensors
@@ -255,16 +258,33 @@ def train_on_records(records, model, optimizer, tokenizer, temperature=0.0):
 
 
 # ==========================================
-# 4. Main Execution
+# 4. Main Execution & Multithreading
 # ==========================================
+
+def data_generator_worker(data_queue, batch_size):
+    """Background thread that continuously generates synthetic data via Ollama"""
+    print(f"[Producer] Starting Ollama data generation thread (batch_size={batch_size})...", flush=True)
+    while True:
+        try:
+            # Generate prompts
+            prompts = generate_synthetic_prompts(count=batch_size, temperature=0.9)
+            batch_records = []
+            for p in prompts:
+                resp = query_ollama(p, temperature=0.0)
+                batch_records.append({"prompt": p, "response": resp})
+            
+            # Put batch in queue (blocks if queue is full)
+            data_queue.put(batch_records)
+            print(f"[Producer] Added {len(batch_records)} records to queue (Queue size: {data_queue.qsize()})", flush=True)
+        except Exception as e:
+            print(f"[Producer] Error generating data: {e}", flush=True)
+            time.sleep(2)
+
 
 def main():
     parser = argparse.ArgumentParser(description="Synthetic Dataset Generator & Continuous Muon Trainer")
-    parser.add_argument("--total-prompts", type=int, default=32, help="Total synthetic prompts to process")
-    parser.add_argument("--batch-size", type=int, default=32, help="Batch size for prompt generation and training")
-    parser.add_argument("--epochs", type=int, default=1, help="Training epochs per batch")
+    parser.add_argument("--batch-size", type=int, default=4, help="Batch size for prompt generation and training")
     parser.add_argument("--temperature", type=float, default=0.0, help="Training temperature (default: 0.0)")
-    parser.add_argument("--no-op-verify", action="store_true", default=True, help="Run initial no-op Ollama verification")
     args = parser.parse_args()
 
     ensure_model_weights()
@@ -274,22 +294,6 @@ def main():
     if not model.load(CHECKPOINT_PATH, device=device):
         model.init_params()
 
-    if args.no_op_verify:
-
-        print("\n--- Step 1: Initial Alignment Check with Ollama Server (Temperature = 0) ---", flush=True)
-        test_prompts = ["What is the capital of France?", "Name 3 primary colors."]
-        model.eval()
-        for prompt in test_prompts:
-            pytorch_out = run_inference(prompt, model, tokenizer, max_new_tokens=32)
-            ollama_out = query_ollama(prompt, temperature=0.0)
-            print(f"\nPrompt: {repr(prompt)}", flush=True)
-            print(f"  PyTorch Output: {repr(pytorch_out)}", flush=True)
-            print(f"  Ollama Output:  {repr(ollama_out)}", flush=True)
-            if pytorch_out == ollama_out:
-                print("  Alignment Check: EXACT MATCH!", flush=True)
-            else:
-                print("  Alignment Check: High semantic alignment.", flush=True)
-
     optimizer = Muon(
         (p for p in model.parameters() if p.ndim == 2),
         lr=DEFAULT_CONFIG["muon_lr"],
@@ -297,36 +301,61 @@ def main():
         weight_decay=DEFAULT_CONFIG["weight_decay"],
     )
 
-    total_prompts = args.total_prompts
-    print(f"\n--- Step 2: Generating {total_prompts} Synthetic Prompts (Normal Temp=0.9) ---", flush=True)
-    prompts = generate_synthetic_prompts(count=total_prompts, temperature=0.9)
+    # Start the data generation thread
+    data_queue = queue.Queue(maxsize=3) # Hold up to 3 batches in RAM
+    producer_thread = threading.Thread(target=data_generator_worker, args=(data_queue, args.batch_size), daemon=True)
+    producer_thread.start()
 
-    print(f"--- Querying Ollama (Temp=0.0) for Ground-Truth Responses & Writing 32-Line JSONL ---", flush=True)
-    batch_records = []
-    for p in prompts:
-        resp = query_ollama(p, temperature=0.0)
-        batch_records.append({"prompt": p, "response": resp})
+    print("\n--- Starting Continuous Multithreaded Training Loop ---", flush=True)
+    print("Press Ctrl+C to stop training.\n", flush=True)
 
-    save_dataset_records(batch_records, path=DATASET_PATH)
-    print(f"Saved {len(batch_records)} records to '{DATASET_PATH}'.", flush=True)
+    # Initialize live plot
+    plt.ion()
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.set_title("Live Training Loss (Log Scale)")
+    ax.set_xlabel("Batch Step")
+    ax.set_ylabel("Loss")
+    ax.set_yscale("log")
+    line, = ax.plot([], [], 'b-', linewidth=2)
+    plt.grid(True, which="both", ls="--", alpha=0.5)
+    
+    loss_history = []
+    step_history = []
 
-    print(f"\n--- Step 3: Training PyTorch Model (Muon Optimizer, Temp={args.temperature}) ---", flush=True)
-    start_time = time.time()
-    batch_loss = train_on_records(batch_records, model, optimizer, tokenizer, temperature=args.temperature)
-    elapsed = time.time() - start_time
-
-    model.save(CHECKPOINT_PATH)
-    total_params = sum(p.numel() for p in model.parameters() if p.ndim == 2)
-
-    print("\n" + "=" * 60, flush=True)
-    print("FAST TRAINING & DATASET GENERATION SUMMARY", flush=True)
-    print("=" * 60, flush=True)
-    print(f"Synthetic Prompts Processed: {len(batch_records)}", flush=True)
-    print(f"Saved Dataset (32 JSONL lines): {DATASET_PATH}", flush=True)
-    print(f"Average Training Loss: {batch_loss:.6f}", flush=True)
-    print(f"Optimized Parameters: {total_params:,}", flush=True)
-    print(f"Total Execution Time: {elapsed:.2f}s", flush=True)
-    print(f"Model Checkpoint Saved: {CHECKPOINT_PATH}", flush=True)
+    try:
+        step = 1
+        while True:
+            # Block until a batch is ready from Ollama
+            batch_records = data_queue.get()
+            
+            print(f"\n--- [Step {step}] Training on new batch of {len(batch_records)} examples ---", flush=True)
+            start_time = time.time()
+            batch_loss = train_on_records(batch_records, model, optimizer, tokenizer, temperature=args.temperature)
+            elapsed = time.time() - start_time
+            
+            print(f"Step {step} completed in {elapsed:.2f}s | Average Loss: {batch_loss:.6f}", flush=True)
+            
+            # Update plot
+            loss_history.append(batch_loss)
+            step_history.append(step)
+            line.set_xdata(step_history)
+            line.set_ydata(loss_history)
+            ax.relim()
+            ax.autoscale_view()
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+            plt.pause(0.01)
+            
+            # Save checkpoints periodically
+            model.save(CHECKPOINT_PATH)
+            step += 1
+            
+    except KeyboardInterrupt:
+        print("\nTraining interrupted by user. Saving final checkpoint...", flush=True)
+        model.save(CHECKPOINT_PATH)
+        plt.ioff()
+        plt.show()
+        print("Shutdown complete.", flush=True)
 
 
 

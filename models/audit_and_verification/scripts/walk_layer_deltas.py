@@ -101,7 +101,8 @@ def step_by_step_walk(hf_model, custom_model, input_ids):
         position_ids = torch.arange(s, device=device).unsqueeze(0)
         pos_emb = hf_model.model.rotary_emb(norm_hf, position_ids)
         attn_hf = hf_layer.self_attn(norm_hf, position_ids=position_ids, position_embeddings=pos_emb)[0]
-        attn_custom = custom_layer.self_attn(norm_custom, position_ids=position_ids)
+        pos_emb_custom = custom_model.model.rotary_emb(position_ids)
+        attn_custom = custom_layer.self_attn(norm_custom, position_embeddings=pos_emb_custom)
         report_data.append(compare_tensors(attn_custom, attn_hf, f"layer_{i:02d}_05_attn_out"))
 
         # d) Residual 1 (Attention Residual)
@@ -151,6 +152,7 @@ def golden_state_injection_walk(hf_model, custom_model, input_ids):
 
     b, s = input_ids.shape
     position_ids = torch.arange(s, device=device).unsqueeze(0)
+    pos_emb_custom = custom_model.model.rotary_emb(position_ids)
 
     # 2. Layer-by-layer golden state injection
     for i in range(16):
@@ -158,7 +160,7 @@ def golden_state_injection_walk(hf_model, custom_model, input_ids):
         golden_target = hidden_states_list[i + 1]
 
         custom_layer = custom_model.model.layers[i]
-        custom_block_out = custom_layer(golden_in, position_ids=position_ids)
+        custom_block_out = custom_layer(golden_in, position_embeddings=pos_emb_custom)
 
         injection_data.append(compare_tensors(custom_block_out, golden_target, f"isolated_block_{i:02d}_out"))
 
