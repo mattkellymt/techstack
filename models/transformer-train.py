@@ -95,7 +95,8 @@ def ensure_model_weights():
     print(f"Converted and saved weights to '{CHECKPOINT_PATH}'.")
 
 
-def run_inference(prompt, model, tokenizer, max_new_tokens=64):
+def run_inference(prompt, model, tokenizer, max_new_tokens=None):
+    max_new_tokens = 64 if max_new_tokens is None else max_new_tokens
     prompt_encoding = tokenizer.apply_chat_template(
         [{"role": "user", "content": prompt}],
         add_generation_prompt=True,
@@ -154,7 +155,9 @@ FALLBACK_PROMPTS = [
 ]
 
 
-def query_ollama(prompt, model_name="llama3.2:1b", temperature=0.0):
+def query_ollama(prompt, model_name=None, temperature=None):
+    model_name = "llama3.2:1b" if model_name is None else model_name
+    temperature = 0.0 if temperature is None else temperature
     url = "http://localhost:11434/api/generate"
     payload = {
         "model": model_name,
@@ -173,7 +176,9 @@ def query_ollama(prompt, model_name="llama3.2:1b", temperature=0.0):
     return f"This is the detailed explanation answering: {prompt}"
 
 
-def generate_synthetic_prompts(count=32, temperature=0.9):
+def generate_synthetic_prompts(count=None, temperature=None):
+    count = 32 if count is None else count
+    temperature = 0.9 if temperature is None else temperature
     meta_prompt = (
         f"Generate exactly {count} diverse, creative, substantive questions asking about science, history, coding, philosophy, logic, or literature. "
         "Return ONLY a JSON list of strings like: [\"Question 1?\", \"Question 2?\"]"
@@ -203,7 +208,8 @@ def generate_synthetic_prompts(count=32, temperature=0.9):
     return prompts[:count]
 
 
-def save_dataset_records(records, path=DATASET_PATH):
+def save_dataset_records(records, path=None):
+    path = DATASET_PATH if path is None else path
     with open(path, "w") as f:
         for r in records:
             f.write(json.dumps({"prompt": r["prompt"], "response": r["response"]}) + "\n")
@@ -214,7 +220,8 @@ def save_dataset_records(records, path=DATASET_PATH):
 # 3. Supervised Muon Training
 # ==========================================
 
-def train_on_records(records, model, ref_model, optimizer, tokenizer, temperature=0.0):
+def train_on_records(records, model, ref_model, optimizer, tokenizer, temperature=None):
+    temperature = 0.0 if temperature is None else temperature
     model.train()
     vocab_size = DEFAULT_CONFIG["vocab_size"]
     total_loss = 0.0

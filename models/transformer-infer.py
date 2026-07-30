@@ -83,7 +83,9 @@ def ensure_model_weights():
     print(f"Converted and saved weights to '{CHECKPOINT_PATH}'.")
 
 
-def run_inference(prompt, model, tokenizer, max_new_tokens=256, temperature=0.0):
+def run_inference(prompt, model, tokenizer, max_new_tokens=None, temperature=None):
+    max_new_tokens = 256 if max_new_tokens is None else max_new_tokens
+    temperature = 0.0 if temperature is None else temperature
     prompt_encoding = tokenizer.apply_chat_template(
         [{"role": "user", "content": prompt}],
         add_generation_prompt=True,
@@ -113,7 +115,8 @@ def run_inference(prompt, model, tokenizer, max_new_tokens=256, temperature=0.0)
     return tokenizer.decode(gen_token_ids, skip_special_tokens=True).strip()
 
 
-def query_ollama(prompt, model_name="llama3.2:1b"):
+def query_ollama(prompt, model_name=None):
+    model_name = "llama3.2:1b" if model_name is None else model_name
     url = "http://localhost:11434/api/generate"
     payload = {
         "model": model_name,

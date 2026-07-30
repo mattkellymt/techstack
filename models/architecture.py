@@ -11,7 +11,13 @@ from safetensors.torch import load_file as load_safetensors, save_file as save_s
 # ==========================================
 
 class Muon(torch.optim.Optimizer):
-    def __init__(self, params, lr=1e-3, weight_decay=0.1, momentum=0.95, nesterov=True, eps=1e-7, ns_steps=5):
+    def __init__(self, params, lr=None, weight_decay=None, momentum=None, nesterov=None, eps=None, ns_steps=None):
+        lr = 1e-3 if lr is None else lr
+        weight_decay = 0.1 if weight_decay is None else weight_decay
+        momentum = 0.95 if momentum is None else momentum
+        nesterov = True if nesterov is None else nesterov
+        eps = 1e-7 if eps is None else eps
+        ns_steps = 5 if ns_steps is None else ns_steps
         super().__init__(params, dict(
             lr=lr,
             weight_decay=weight_decay,
@@ -21,7 +27,9 @@ class Muon(torch.optim.Optimizer):
             ns_steps=ns_steps,
         ))
 
-    def addmm(self, inp, mat1, mat2, beta=1, alpha=1):
+    def addmm(self, inp, mat1, mat2, beta=None, alpha=None):
+        beta = 1 if beta is None else beta
+        alpha = 1 if alpha is None else alpha
         return beta * inp + alpha * (mat1 @ mat2)
 
     def newton_schulz_step(self, upd, a, b, c):
@@ -84,7 +92,8 @@ def create_param(*shape):
 
 
 class RMSNorm(nn.Module):
-    def __init__(self, vocab_dim, eps=1e-5, **kwargs):
+    def __init__(self, vocab_dim, eps=None, **kwargs):
+        eps = 1e-5 if eps is None else eps
         super().__init__()
         self.eps = eps
         self.weight = nn.Parameter(torch.empty(vocab_dim))
@@ -95,7 +104,9 @@ class RMSNorm(nn.Module):
 
 
 class RoPE(nn.Module):
-    def __init__(self, head_dim, rope_theta=500000.0, rope_scaling=None, seq_len=2048, **kwargs):
+    def __init__(self, head_dim, rope_theta=None, rope_scaling=None, seq_len=None, **kwargs):
+        rope_theta = 500000.0 if rope_theta is None else rope_theta
+        seq_len = 2048 if seq_len is None else seq_len
         super().__init__()
         self.head_dim = head_dim
         inv_freq = 1.0 / (rope_theta ** (torch.arange(0, head_dim, 2, dtype=torch.float32) / head_dim))
@@ -135,7 +146,9 @@ class RoPE(nn.Module):
 
 
 class Attention(nn.Module):
-    def __init__(self, vocab_dim, kv_dim, n_heads, n_kv_heads, head_dim, rope_theta=500000.0, rope_scaling=None, seq_len=2048, **kwargs):
+    def __init__(self, vocab_dim, kv_dim, n_heads, n_kv_heads, head_dim, rope_theta=None, rope_scaling=None, seq_len=None, **kwargs):
+        rope_theta = 500000.0 if rope_theta is None else rope_theta
+        seq_len = 2048 if seq_len is None else seq_len
         super().__init__()
         if n_heads % n_kv_heads != 0:
             raise ValueError("n_heads must be divisible by n_kv_heads")
@@ -254,14 +267,16 @@ class Model(nn.Module):
                 else:
                     nn.init.ones_(p)
 
-    def save(self, path="llama3_2_1b.safetensors"):
+    def save(self, path=None):
+        path = "llama3_2_1b.safetensors" if path is None else path
         save_safetensors(self.state_dict(), path)
         config_path = path.rsplit('.', 1)[0] + ".json"
         with open(config_path, "w") as f:
             json.dump(self.config, f, indent=2)
         print(f"Saved model to '{path}' and config to '{config_path}'.")
 
-    def load(self, path="llama3_2_1b.safetensors", device=None):
+    def load(self, path=None, device=None):
+        path = "llama3_2_1b.safetensors" if path is None else path
         if not os.path.exists(path):
             return False
         dev = device or next(self.parameters()).device
