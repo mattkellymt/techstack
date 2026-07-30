@@ -31,7 +31,7 @@ sudo umoci unpack \
 	--image "${build_root}/image:44" \
 	"${build_root}/bundle"
 
-sudo cp -R "${script_dir}/client/etc/." "${image_root}/etc/"
+sudo cp -R "${script_dir}/container/etc/." "${image_root}/etc/"
 sudo chroot "${image_root}" dnf -y install "${packages[@]}"
 sudo chroot "${image_root}" systemctl enable systemd-networkd.service
 
