@@ -346,8 +346,11 @@ def main():
             fig.canvas.flush_events()
             plt.pause(0.01)
             
-            # Save checkpoints periodically
-            model.save(CHECKPOINT_PATH)
+            # Save checkpoints periodically to prevent SSD wear (every 50 steps)
+            if step % 50 == 0:
+                print(f"--> Saving periodic checkpoint at step {step}...", flush=True)
+                model.save(CHECKPOINT_PATH)
+            
             step += 1
             
     except KeyboardInterrupt:
