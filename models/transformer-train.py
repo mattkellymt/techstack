@@ -295,6 +295,7 @@ def main():
     parser = argparse.ArgumentParser(description="Synthetic Dataset Generator & Continuous Muon Trainer")
     parser.add_argument("--batch-size", type=int, default=4, help="Batch size for prompt generation and training")
     parser.add_argument("--temperature", type=float, default=0.0, help="Training temperature (default: 0.0)")
+    parser.add_argument("--weight-decay", type=float, default=0.0, help="Weight decay for optimizer (default: 0.0)")
     args = parser.parse_args()
 
     ensure_model_weights()
@@ -317,7 +318,7 @@ def main():
         (p for p in model.parameters() if p.ndim == 2),
         lr=DEFAULT_CONFIG["muon_lr"],
         momentum=DEFAULT_CONFIG["momentum"],
-        weight_decay=DEFAULT_CONFIG["weight_decay"],
+        weight_decay=args.weight_decay,
     )
 
     # Start the data generation thread
