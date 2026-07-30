@@ -24,6 +24,7 @@ wheels/
 venv/
 ENV/
 .uv/
+.cache/
 
 # Model Checkpoints, Weights & Large Binary Files
 *.safetensors
