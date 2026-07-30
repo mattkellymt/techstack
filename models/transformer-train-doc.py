@@ -56,12 +56,12 @@ STUDENT_CHECKPOINT_PATH = "student_llama3_2_1b.safetensors"
 CONFIG_PATH = "llama3_2_1b.json"
 
 META_PROMPTS = [
-    "Ask a creative question about physics, energy, or space.",
-    "Ask an interesting question about computer science or algorithms.",
-    "Ask a thought-provoking question about history or philosophy.",
-    "Ask a fascinating question about biology, chemistry, or evolution.",
-    "Ask a clear question about software architecture or operating systems.",
-    "Ask a substantive question about mathematics or quantum mechanics."
+    "Ask a complex, fascinating question about cell biology, genetics, or molecular biology.",
+    "Ask a substantive question about biochemistry, enzymes, or metabolic pathways.",
+    "Ask an intriguing question about evolutionary biology, speciation, or phylogenetics.",
+    "Ask a detailed question about neurobiology, synaptic transmission, or neuroscience.",
+    "Ask a challenging question about microbiology, extremophiles, or immunology.",
+    "Ask a deep question about developmental biology, morphogenesis, or stem cells."
 ]
 
 
@@ -105,7 +105,7 @@ def ensure_model_weights():
 
 @torch.no_grad()
 def generate_dynamic_prompt(teacher, tokenizer, temperature=0.8):
-    """Step A: Generate a dynamic prompt using Teacher with non-zero temperature"""
+    """Step A: Generate a dynamic biology prompt using Teacher with non-zero temperature"""
     meta_prompt = random.choice(META_PROMPTS)
     prompt_encoding = tokenizer.apply_chat_template(
         [{"role": "user", "content": meta_prompt}],
@@ -116,7 +116,7 @@ def generate_dynamic_prompt(teacher, tokenizer, temperature=0.8):
     curr = input_ids
     eos_ids = {128009, 128001}
 
-    for _ in range(24):
+    for _ in range(32):
         logits = teacher(curr)
         probs = F.softmax(logits[:, -1, :] / temperature, dim=-1)
         next_token = torch.multinomial(probs, num_samples=1)
@@ -126,11 +126,11 @@ def generate_dynamic_prompt(teacher, tokenizer, temperature=0.8):
 
     gen_ids = curr[0][input_ids.shape[1]:].tolist()
     prompt_text = tokenizer.decode(gen_ids, skip_special_tokens=True).strip()
-    return prompt_text if len(prompt_text) > 10 else "What is the principle of conservation of energy?"
+    return prompt_text if len(prompt_text) > 10 else "What is the process by which enzymes catalyze biological reactions?"
 
 
 @torch.no_grad()
-def run_inference_zero_temp(prompt, model, tokenizer, max_new_tokens=32):
+def run_inference_zero_temp(prompt, model, tokenizer, max_new_tokens=96):
     """Step B: Run inference on prompt using temperature 0.0 (greedy decoding)"""
     encoding = tokenizer.apply_chat_template(
         [{"role": "user", "content": prompt}],
@@ -157,7 +157,7 @@ def run_inference_zero_temp(prompt, model, tokenizer, max_new_tokens=32):
 # ==========================================
 
 def main():
-    parser = argparse.ArgumentParser(description="Continuous Dynamic Prompt JSD + Lowercase Doc Loss Trainer")
+    parser = argparse.ArgumentParser(description="Continuous Dynamic Biology Prompt JSD + Lowercase Doc Loss Trainer")
     parser.add_argument("--lr", type=float, default=0.001, help="Learning rate for Muon (default: 0.001)")
     args = parser.parse_args()
 
@@ -185,7 +185,7 @@ def main():
     )
 
     print("\n=================================================================", flush=True)
-    print("Starting Continuous Training with Dynamic Prompts, Prompt Logging & 5-Line Output", flush=True)
+    print("Starting Biology Domain Training with Dynamic Prompts & 256-Char Truncation", flush=True)
     print(f"JSD_MAX Cap: {JSD_MAX:.6f} | Muon LR: {args.lr}", flush=True)
     print("=================================================================\n", flush=True)
 
@@ -230,7 +230,7 @@ def main():
 
             optimizer.step()
 
-            # Measure 4th Metric: Logit Gap on first token position of response
+            # Measure Logit Gap on first token position of response
             first_pos_logits = s_logits[0, -1, :]
             top_token_id = torch.argmax(first_pos_logits).item()
             top_token_str = tokenizer.decode([top_token_id])
@@ -244,7 +244,12 @@ def main():
             teacher_output = run_inference_zero_temp(dynamic_prompt, teacher, tokenizer)
             student_output = run_inference_zero_temp(dynamic_prompt, student, tokenizer)
 
-            # Print 5-line output format + blank space line
+            # Max 256 chars formatting
+            prompt_disp = dynamic_prompt[:256]
+            teacher_disp = teacher_output[:256]
+            student_disp = student_output[:256]
+
+            # Print 5-line output format with max 256 chars per text section
             print(
                 f"Step {step:04d} | JSD: {jsd_loss.item():.6f} | "
                 f"Raw Doc: {raw_doc_loss.item():.6f} | "
@@ -253,9 +258,9 @@ def main():
                 flush=True
             )
             print(f"Logit Gap ('{top_token_str.strip()}' vs '{lower_str.strip()}'): {gap:+.4f}", flush=True)
-            print(f"Prompt: \"{dynamic_prompt}\"", flush=True)
-            print(f"Teacher (temp 0.0): \"{teacher_output}\"", flush=True)
-            print(f"Student (temp 0.0): \"{student_output}\"", flush=True)
+            print(f"Prompt (max 256 chars): \"{prompt_disp}\"", flush=True)
+            print(f"Teacher (temp 0.0, max 256 chars): \"{teacher_disp}\"", flush=True)
+            print(f"Student (temp 0.0, max 256 chars): \"{student_disp}\"", flush=True)
             print("", flush=True)
 
             step += 1
