@@ -275,6 +275,7 @@ def main():
         model.init_params()
 
     if args.no_op_verify:
+
         print("\n--- Step 1: Initial Alignment Check with Ollama Server (Temperature = 0) ---", flush=True)
         test_prompts = ["What is the capital of France?", "Name 3 primary colors."]
         model.eval()

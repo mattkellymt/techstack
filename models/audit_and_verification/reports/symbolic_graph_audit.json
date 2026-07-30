@@ -1,0 +1,14 @@
+{
+  "parameter_match": true,
+  "custom_total_params": 1235814400,
+  "hf_total_params": 1235814400,
+  "num_layers": 16,
+  "num_heads": 32,
+  "num_kv_heads": 8,
+  "head_dim": 64,
+  "hidden_dim": 8192,
+  "vocab_size": 128256,
+  "rope_theta": 500000.0,
+  "custom_param_count": 146,
+  "hf_param_count": 146
+}

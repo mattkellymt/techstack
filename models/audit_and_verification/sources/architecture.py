@@ -90,8 +90,8 @@ class RMSNorm(nn.Module):
         self.weight = nn.Parameter(torch.empty(vocab_dim))
 
     def forward(self, x):
-        var = x.to(torch.float32).pow(2).mean(dim=-1, keepdim=True)
-        return (x * torch.rsqrt(var + self.eps).to(x.dtype)) * self.weight
+        var = x.pow(2).mean(dim=-1, keepdim=True)
+        return (x * torch.rsqrt(var + self.eps)) * self.weight
 
 
 class RoPE(nn.Module):
@@ -128,14 +128,10 @@ class RoPE(nn.Module):
         self.register_buffer('cos', emb.cos(), persistent=False)
         self.register_buffer('sin', emb.sin(), persistent=False)
 
-    def forward(self, x, position_ids=None):
-        b, s = x.shape[:2]
-        if position_ids is None:
-            position_ids = torch.arange(s, dtype=torch.long, device=x.device).unsqueeze(0).expand(b, -1)
-            
-        cos = self.cos[position_ids].unsqueeze(2) # [B, S, 1, head_dim]
-        sin = self.sin[position_ids].unsqueeze(2) # [B, S, 1, head_dim]
-        
+    def forward(self, x):
+        s = x.shape[-2]
+        cos = self.cos[:s].unsqueeze(0).unsqueeze(0)
+        sin = self.sin[:s].unsqueeze(0).unsqueeze(0)
         x1 = x[..., :self.head_dim // 2]
         x2 = x[..., self.head_dim // 2:]
         rotate_x = torch.cat((-x2, x1), dim=-1)
@@ -167,30 +163,24 @@ class Attention(nn.Module):
         self.v_proj = create_param(vocab_dim, expected_kv_dim)
         self.o_proj = create_param(self.q_dim, vocab_dim)
 
-    def forward(self, x, position_ids=None, attention_mask=None):
+    def forward(self, x):
         b, s, d = x.shape
         q = torch.matmul(x, self.q_proj.weight).reshape(b, s, self.n_heads, self.head_dim).transpose(1, 2)
         k = torch.matmul(x, self.k_proj.weight).reshape(b, s, self.n_kv_heads, self.head_dim).transpose(1, 2)
         v = torch.matmul(x, self.v_proj.weight).reshape(b, s, self.n_kv_heads, self.head_dim).transpose(1, 2)
 
-        # q, k shapes after transpose: [B, n_heads, S, head_dim]
-        # RoPE expects [B, S, n_heads, head_dim]
-        q = self.rope(q.transpose(1, 2), position_ids).transpose(1, 2)
-        k = self.rope(k.transpose(1, 2), position_ids).transpose(1, 2)
+        q = self.rope(q)
+        k = self.rope(k)
 
         n_rep = self.n_heads // self.n_kv_heads
         k = k.repeat_interleave(n_rep, dim=1)
         v = v.repeat_interleave(n_rep, dim=1)
 
+        if self.causal_mask.shape != (s, s) or self.causal_mask.device != x.device:
+            self.causal_mask = torch.ones(s, s, dtype=torch.bool, device=x.device).triu(diagonal=1)
+
         attn = torch.matmul(q, k.transpose(-2, -1)) * self.scale
-        
-        if attention_mask is not None:
-            attn = attn + attention_mask
-        else:
-            if self.causal_mask.shape != (s, s) or self.causal_mask.device != x.device:
-                self.causal_mask = torch.ones(s, s, dtype=torch.bool, device=x.device).triu(diagonal=1)
-            attn = attn.masked_fill(self.causal_mask, float("-inf"))
-            
+        attn = attn.masked_fill(self.causal_mask, float("-inf"))
         attn = torch.softmax(attn, dim=-1)
 
         out = torch.matmul(attn, v).transpose(1, 2).reshape(b, s, self.q_dim)
@@ -219,8 +209,8 @@ class Block(nn.Module):
         self.post_attention_layernorm = RMSNorm(**kwargs)
         self.mlp = MLP(**kwargs)
 
-    def forward(self, x, position_ids=None, attention_mask=None):
-        x = x + self.self_attn(self.input_layernorm(x), position_ids, attention_mask)
+    def forward(self, x):
+        x = x + self.self_attn(self.input_layernorm(x))
         x = x + self.mlp(self.post_attention_layernorm(x))
         return x
 
@@ -238,14 +228,14 @@ class Model(nn.Module):
             'norm': RMSNorm(**config),
             'layers': nn.ModuleList(Block(**config) for _ in range(n_layers))
         })
-        # Note: lm_head is tied to embed_tokens.weight
+        self.lm_head = create_param(vocab_dim, vocab_size)
 
-    def forward(self, inputs, position_ids=None, attention_mask=None):
+    def forward(self, inputs):
         x = self.model.embed_tokens.weight[inputs]
         for layer in self.model.layers:
-            x = layer(x, position_ids, attention_mask)
+            x = layer(x)
         x = self.model.norm(x)
-        return torch.matmul(x, self.model.embed_tokens.weight.T)
+        return torch.matmul(x, self.lm_head.weight)
 
     def init_params(self):
         with torch.no_grad():
@@ -267,12 +257,7 @@ class Model(nn.Module):
             return False
         dev = device or next(self.parameters()).device
         sd = load_safetensors(path, device=str(dev))
-        
-        # Handle tied weights from safetensors correctly
-        if "lm_head.weight" in sd:
-            sd.pop("lm_head.weight")
-            
-        self.load_state_dict(sd, strict=False)
+        self.load_state_dict(sd)
 
         config_path = path.rsplit('.', 1)[0] + ".json"
         if os.path.exists(config_path):
