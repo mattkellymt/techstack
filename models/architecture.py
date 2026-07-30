@@ -168,7 +168,7 @@ class Attention(nn.Module):
         self.v_proj = create_param(vocab_dim, expected_kv_dim)
         self.o_proj = create_param(self.q_dim, vocab_dim)
 
-    def forward(self, x, position_embeddings=None, attention_mask=None):
+    def forward(self, x, position_embeddings=None, attention_mask=None, past_key_value=None):
         b, s, d = x.shape
         q = torch.matmul(x, self.q_proj.weight).reshape(b, s, self.n_heads, self.head_dim).transpose(1, 2)
         k = torch.matmul(x, self.k_proj.weight).reshape(b, s, self.n_kv_heads, self.head_dim).transpose(1, 2)
@@ -185,6 +185,13 @@ class Attention(nn.Module):
             q = apply_rope(q.transpose(1, 2)).transpose(1, 2)
             k = apply_rope(k.transpose(1, 2)).transpose(1, 2)
 
+        if past_key_value is not None:
+            past_k, past_v = past_key_value
+            k = torch.cat([past_k, k], dim=2)
+            v = torch.cat([past_v, v], dim=2)
+
+        new_kv = (k, v)
+        s_total = k.shape[2]
         n_rep = self.n_heads // self.n_kv_heads
         
         # Zero-allocation GQA routing for SDPA
@@ -195,11 +202,11 @@ class Attention(nn.Module):
         out = F.scaled_dot_product_attention(
             q_gqa, k_gqa, v_gqa, 
             attn_mask=attention_mask,
-            is_causal=(attention_mask is None)
+            is_causal=(attention_mask is None and s == s_total)
         )
         
         out = out.reshape(b, self.n_heads, s, self.head_dim).transpose(1, 2).reshape(b, s, self.q_dim)
-        return torch.matmul(out, self.o_proj.weight)
+        return torch.matmul(out, self.o_proj.weight), new_kv
 
 
 
@@ -224,10 +231,11 @@ class Block(nn.Module):
         self.post_attention_layernorm = RMSNorm(**kwargs)
         self.mlp = MLP(**kwargs)
 
-    def forward(self, x, position_embeddings=None, attention_mask=None):
-        x = x + self.self_attn(self.input_layernorm(x), position_embeddings=position_embeddings, attention_mask=attention_mask)
+    def forward(self, x, position_embeddings=None, attention_mask=None, past_key_value=None):
+        attn_out, new_kv = self.self_attn(self.input_layernorm(x), position_embeddings=position_embeddings, attention_mask=attention_mask, past_key_value=past_key_value)
+        x = x + attn_out
         x = x + self.mlp(self.post_attention_layernorm(x))
-        return x
+        return x, new_kv
 
 
 class Model(nn.Module):
@@ -246,18 +254,26 @@ class Model(nn.Module):
         })
         # Note: lm_head is tied to embed_tokens.weight
 
-    def forward(self, inputs, position_ids=None, attention_mask=None):
+    def forward(self, inputs, position_ids=None, attention_mask=None, past_key_values=None, use_cache=False):
         b, s = inputs.shape
         if position_ids is None:
-            position_ids = torch.arange(s, dtype=torch.long, device=inputs.device).unsqueeze(0).expand(b, -1)
+            past_length = past_key_values[0][0].shape[2] if past_key_values is not None else 0
+            position_ids = torch.arange(past_length, past_length + s, dtype=torch.long, device=inputs.device).unsqueeze(0).expand(b, -1)
             
         position_embeddings = self.model.rotary_emb(position_ids)
         
         x = self.model.embed_tokens.weight[inputs]
-        for layer in self.model.layers:
-            x = layer(x, position_embeddings=position_embeddings, attention_mask=attention_mask)
+        new_past_key_values = []
+        for i, layer in enumerate(self.model.layers):
+            past_kv = past_key_values[i] if past_key_values is not None else None
+            x, next_kv = layer(x, position_embeddings=position_embeddings, attention_mask=attention_mask, past_key_value=past_kv)
+            new_past_key_values.append(next_kv)
+            
         x = self.model.norm(x)
-        return torch.matmul(x, self.model.embed_tokens.weight.T)
+        logits = torch.matmul(x, self.model.embed_tokens.weight.T)
+        if use_cache:
+            return logits, new_past_key_values
+        return logits
 
     def init_params(self):
         with torch.no_grad():
