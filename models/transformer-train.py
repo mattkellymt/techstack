@@ -214,7 +214,7 @@ def save_dataset_records(records, path=DATASET_PATH):
 # 3. Supervised Muon Training
 # ==========================================
 
-def train_on_records(records, model, ref_model, optimizer, tokenizer, temperature=0.0, kl_weight=0.1):
+def train_on_records(records, model, ref_model, optimizer, tokenizer, temperature=0.0):
     model.train()
     vocab_size = DEFAULT_CONFIG["vocab_size"]
     total_loss = 0.0
@@ -241,9 +241,7 @@ def train_on_records(records, model, ref_model, optimizer, tokenizer, temperatur
         if temperature > 0.0:
             logits = logits / temperature
 
-        ce_loss = F.cross_entropy(logits.reshape(-1, vocab_size), targets.reshape(-1))
-
-        # KL-Divergence Penalty against Frozen Reference Model
+        # Pure KL-Divergence Distillation against Frozen Reference Model
         with torch.no_grad():
             ref_logits = ref_model(inputs)
             if temperature > 0.0:
@@ -253,13 +251,13 @@ def train_on_records(records, model, ref_model, optimizer, tokenizer, temperatur
         ref_probs = F.softmax(ref_logits.reshape(-1, vocab_size), dim=-1)
         kl_loss = F.kl_div(log_probs, ref_probs, reduction='batchmean')
         
-        loss = ce_loss + (kl_weight * kl_loss)
+        loss = kl_loss
         scaled_loss = loss / len(records)
         scaled_loss.backward()
 
         total_loss += loss.item()
         valid_batches += 1
-        print(f"  [Sample {idx}/{len(records)}] CE Loss: {ce_loss.item():.4f} | KL Loss: {kl_loss.item():.4f} | Total: {loss.item():.4f}", flush=True)
+        print(f"  [Sample {idx}/{len(records)}] Pure KL Loss: {loss.item():.4f}", flush=True)
 
     optimizer.step()
     optimizer.zero_grad()
@@ -351,7 +349,7 @@ def main():
             
             print(f"\n--- [Step {step}] Training on new batch of {len(batch_records)} examples ---", flush=True)
             start_time = time.time()
-            batch_loss = train_on_records(batch_records, model, ref_model, optimizer, tokenizer, temperature=args.temperature, kl_weight=0.1)
+            batch_loss = train_on_records(batch_records, model, ref_model, optimizer, tokenizer, temperature=args.temperature)
             elapsed = time.time() - start_time
             
             print(f"Step {step} completed in {elapsed:.2f}s | Average Loss: {batch_loss:.6f}", flush=True)
