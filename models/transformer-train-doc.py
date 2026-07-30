@@ -158,7 +158,7 @@ def run_inference_zero_temp(prompt, model, tokenizer, max_new_tokens=96):
 
 def main():
     parser = argparse.ArgumentParser(description="Continuous Dynamic Biology Prompt JSD + Lowercase Doc Loss Trainer")
-    parser.add_argument("--lr", type=float, default=0.01, help="Learning rate for Muon (default: 0.001)")
+    parser.add_argument("--lr", type=float, default=0.002, help="Learning rate for Muon (default: 0.001)")
     args = parser.parse_args()
 
     ensure_model_weights()
