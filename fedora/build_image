@@ -33,7 +33,7 @@ sudo umoci unpack \
 
 sudo cp -R "${script_dir}/container/etc/." "${image_root}/etc/"
 # sudo chroot "${image_root}" dnf -y install "${packages[@]}"
-sudo dnf --root "${image_root}" -y install "${packages[@]}"
+sudo dnf --installroot "${image_root}" -y install "${packages[@]}"
 sudo chroot "${image_root}" systemctl enable systemd-networkd.service
 
 sudo chroot "${image_root}" rm -f /etc/machine-id
