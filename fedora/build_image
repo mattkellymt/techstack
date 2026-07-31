@@ -25,7 +25,7 @@ packages=(
 )
 
 sudo skopeo copy \
-	docker://registry.fedoraproject.org/fedora:44 \
+	docker://docker.io/fedora:44 \
 	"oci:${build_root}/image:44"
 sudo umoci unpack \
 	--image "${build_root}/image:44" \
