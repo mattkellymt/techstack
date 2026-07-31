@@ -5,6 +5,5 @@ My personal AI/ML tech stack. A space for side projects, experiments, and sharpe
 
 ```bash
 git clone https://github.com/mattkellymt/techstack.git
-cd techstack
-./fedora/setup
+cd techstack && fedora/setup
 ```
