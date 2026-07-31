@@ -32,8 +32,6 @@ sudo umoci unpack \
 	"${build_root}/bundle"
 
 sudo cp -R "${script_dir}/container/etc/." "${image_root}/etc/"
-# sudo chroot "${image_root}" dnf -y install "${packages[@]}"
-sudo dnf --installroot "${image_root}" -y install "${packages[@]}"
 sudo chroot "${image_root}" systemctl enable systemd-networkd.service
 
 sudo chroot "${image_root}" rm -f /etc/machine-id
@@ -42,9 +40,11 @@ sudo chroot "${image_root}" systemd-machine-id-setup
 sudo chroot "${image_root}" useradd --create-home --user-group --groups wheel agent
 sudo chroot "${image_root}" passwd --delete agent
 
-sudo systemctl stop "systemd-nspawn@${image_name}.service" &> /dev/null
-sudo machinectl remove "${image_name}" &> /dev/null
-
 sudo cp -R "${script_dir}/host/etc/." /etc/
+sudo systemctl stop "systemd-nspawn@${image_name}.service" &> /dev/null
+
+sudo machinectl remove "${image_name}" &> /dev/null
 sudo mv "${image_root}" "/var/lib/machines/${image_name}"
+
 sudo systemctl start "systemd-nspawn@${image_name}.service"
+sudo machinectl shell agent@"${image_name}" /bin/dnf -y install "${packages[@]}"
