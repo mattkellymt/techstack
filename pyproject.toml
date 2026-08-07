@@ -1,10 +1,11 @@
 [project]
-name = "models"
+name = "techstack"
 version = "0.1.0"
-description = "Add your description here"
+description = "Techstack project"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "blks>=2026.8.1",
     "huggingface>=0.0.1",
     "jupyterlab>=4.6.2",
     "matplotlib>=3.11.1",
@@ -15,3 +16,10 @@ dependencies = [
     "tqdm>=4.70.0",
     "transformers>=5.14.1",
 ]
+
+[tool.uv]
+package = false
+
+
+
+
