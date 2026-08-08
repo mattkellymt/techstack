@@ -246,14 +246,14 @@ css = [
 
 [[package]]
 name = "blks"
-version = "2026.8.20"
+version = "2026.8.21"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "torch" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d6/b3/bfcac1b58a4d59ff9f13238e9f1c7c9a54ffd0573a334be15931e8682897/blks-2026.8.20.tar.gz", hash = "sha256:fed3ee1e180f82cd5a89faeb3f8ae869db0fbaa9c0b67302cc4d2d13c22c3e4b", size = 3142, upload-time = "2026-08-08T00:50:22.201Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ff/1a/39e1369f00aec46ea477802275645dcf9a66ade394fcd38a55561d62910f/blks-2026.8.21.tar.gz", hash = "sha256:6a2e9a67322c5352c79191938c864d62f78875bee230f5be07ca0be6f84eaf4e", size = 3171, upload-time = "2026-08-08T01:04:15.463Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/40/52/e9e5edfc42d8c6329498bed7647bcca56aec34f80037e31d474be3adbe34/blks-2026.8.20-py3-none-any.whl", hash = "sha256:95236b16f155cb6f3805444c170360039bdda278458acb8db9f4f6f55e0296b1", size = 5324, upload-time = "2026-08-08T00:50:21.362Z" },
+    { url = "https://files.pythonhosted.org/packages/6d/a8/a3a259b8ed23c076696fa8e7c18f539a0cb5ea770ec97850d887e40c5a0b/blks-2026.8.21-py3-none-any.whl", hash = "sha256:c19af9765db90e25592579d008480afedbb74905be7eeb9d39a36c979c13cd52", size = 5341, upload-time = "2026-08-08T01:04:14.739Z" },
 ]
 
 [[package]]
@@ -2401,7 +2401,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "blks", specifier = ">=2026.8.20" },
+    { name = "blks", specifier = ">=2026.8.21" },
     { name = "huggingface", specifier = ">=0.0.1" },
     { name = "jupyterlab", specifier = ">=4.6.2" },
     { name = "matplotlib", specifier = ">=3.11.1" },
