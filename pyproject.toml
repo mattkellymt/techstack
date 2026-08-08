@@ -5,7 +5,7 @@ description = "Techstack project"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
-    "blks>=2026.8.22",
+    "blks>=2026.8.23",
     "huggingface>=0.0.1",
     "jupyterlab>=4.6.2",
     "matplotlib>=3.11.1",
